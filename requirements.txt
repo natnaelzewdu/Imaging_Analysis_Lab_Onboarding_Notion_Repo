@@ -1,0 +1,4 @@
+python-docx
+notion-client
+python-dotenv
+requests
