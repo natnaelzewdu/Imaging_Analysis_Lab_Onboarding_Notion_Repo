@@ -14,6 +14,7 @@ PROJECTS_DATA_SOURCE_ID = os.environ["PROJECTS_DATA_SOURCE_ID"]
 
 # Plain page IDs (not databases) - optional, only needed if syncing those pages
 WELCOME_PAGE_ID = os.environ.get("WELCOME_PAGE_ID", "")
+LAB_LEADERSHIP_PAGE_ID = os.environ.get("LAB_LEADERSHIP_PAGE_ID", "")
 
 NOTION_API_VERSION = "2026-03-11"
 NOTION_BASE_URL = "https://api.notion.com/v1"

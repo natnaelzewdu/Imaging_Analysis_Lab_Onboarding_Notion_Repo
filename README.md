@@ -248,17 +248,78 @@ renaming a tab folder requires **no code changes**.
 > To change the **display label** shown in terminal output, edit the `label:`
 > field in `content/<tab>/_tab.yaml`. This does not affect Notion.
 
-### Add a new Notion tab
+### Add a new Notion tab or page
 
-1. Create a new folder under `content/` (e.g. `content/reading_list/`).
-2. Add a `_tab.yaml` inside it:
+Every tab and page in Notion is backed by a **data source**. You must create the
+data source first, then attach a view to it. There are two view types used in
+this template:
+
+- **Table view** - for database tabs (Lab Intro, Technical Onboarding, etc.). Each row is a task.
+- **Feed view** - for plain page tabs (Welcome, Lab Leadership). Each entry is a document-style page.
+
+#### Step 1 - Create a new data source in Notion
+
+Click the `+` button at the end of the tab bar. In the "Add a new view" picker,
+click **New data source** at the bottom.
+
+![Adding a new view - pick Table for a task database or Feed for a plain page](assets/page_creation.png)
+
+Choose **Table** if you are creating a new task database tab, or **Feed** if you
+are creating a new document-style page. Notion will create a new data source and
+open it. Name the data source (this becomes the tab label in Notion).
+
+#### Step 2 - Find the data source ID
+
+Click the view settings icon (the sliders icon, top right) to open the view
+settings panel. Under **Data source settings**, click **Manage data sources**.
+
+![View settings panel showing Layout and Manage data sources](assets/create_new_page_or_tab_1.png)
+
+You will see a list of all data sources in the workspace. Your new one will
+appear here. Copy its name - you will need it to find the ID in the next step.
+
+![Manage data sources list showing all data sources including Lab Leadership](assets/create_new_page_or_tab_2.png)
+
+To get the data source ID, open the new tab in Notion and copy the UUID from
+the URL (the part before `?v=`). Add it to your `.env` and `config.py`.
+
+#### Step 3 - Link to an existing data source (if connecting later)
+
+If you created the data source separately and want to attach a view to it, click
+**Manage data sources** then **Link existing data source**. Search for your data
+source by name and select it.
+
+![Link to existing data source picker](assets/create_new_page_or_tab_3.png)
+
+#### Step 4 - Wire it up in the repo
+
+**For a Table tab (task database):**
+
+1. Create `content/<folder>/` with a `_tab.yaml`:
    ```yaml
-   label: "Reading List"
-   notion_env_var: READING_LIST_DATA_SOURCE_ID
+   label: "My New Tab"
+   notion_env_var: MY_NEW_TAB_DATA_SOURCE_ID
    ```
-3. Add the corresponding env var to `.env` and `config.py`.
-4. Create category subfolders and `.md` files with frontmatter as normal.
-5. Run `python sync.py --tab reading_list`.
+2. Add `MY_NEW_TAB_DATA_SOURCE_ID` to `.env` and `config.py`.
+3. Create category subfolders and `.md` files with frontmatter.
+4. Run `python sync.py --tab <folder>`.
+
+**For a Feed tab (plain page):**
+
+1. Create `content/<folder>/` with a `_page.yaml`:
+   ```yaml
+   label: "My New Page"
+   notion_env_var: MY_NEW_PAGE_ID
+   ```
+2. Add `MY_NEW_PAGE_ID` to `.env` and `config.py`.
+3. Create a `.md` file with the page content.
+4. Run `python sync.py --tab <folder>`.
+
+> **Note for Feed tabs:** The data source ID in the URL is the database ID, not
+> the page ID. For Feed-style pages, you also need the ID of the individual entry
+> inside the database (the `&p=` UUID from the URL when you open an entry).
+> See the `WELCOME_PAGE_ID` instructions in the [Environment variables](#environment-variables)
+> section for details.
 
 ### Edit the Welcome page (or any plain Notion page)
 
@@ -268,18 +329,6 @@ because plain pages have no named rows to reconcile against.
 
 1. Edit `content/welcome/welcome.md`.
 2. Run `python sync.py --tab welcome`.
-
-To add support for another plain page (e.g. a People directory page):
-
-1. Create a new folder under `content/` (e.g. `content/people/`).
-2. Add a `_page.yaml` inside it:
-   ```yaml
-   label: "People"
-   notion_env_var: PEOPLE_PAGE_ID
-   ```
-3. Add `PEOPLE_PAGE_ID` to `.env` and `config.py`.
-4. Create a `.md` file with the page content.
-5. Run `python sync.py --tab people`.
 
 ### Sync to Notion
 
