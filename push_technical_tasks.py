@@ -9,26 +9,20 @@ Usage:
 import time
 from config import TECHNICAL_DATA_SOURCE_ID
 from docx_parser import load_paragraphs, extract_description_by_range, extract_images
-from notion_api import create_page, add_image_block, upload_image
+from notion_api import create_page, query_data_source, add_image_block, upload_image
 
 DOCX_PATH = r"data\Imaging-Analysis Getting Started.docx"
 
 TASKS = [
-    {
-        "task_name": "Read Technical Onboarding Introduction",
-        "emoji": "👋",
-        "para_range": (27, 42),
-        "images": [
-            {"ref": "media/image1.jpeg", "caption": "Imaging-Analysis Laboratory, TReNDS Center, Georgia State University"},
-        ],
-        "url": "https://scholar.google.com/citations?view_op=list_works&hl=en&hl=en&user=e35VA6sAAAAJ&sortby=pubdate",
-    },
     {
         "task_name": "Set Up and Review TReNDS Computing Cluster",
         "emoji": "🖥️",
         "para_range": (43, 69),
         "images": [],
         "url": "https://trendscenter.github.io/wiki/docs/Getting_Started.html",
+        "category": "Computing Environment",
+        "tier": "Hands-On",
+        "order": 1,
     },
     {
         "task_name": "Learn Independent Component Analysis (ICA)",
@@ -36,6 +30,9 @@ TASKS = [
         "para_range": (70, 83),
         "images": [],
         "url": "https://doi.org/10.1016/j.neuroimage.2008.10.057",
+        "category": "Research Foundations",
+        "tier": "Theory",
+        "order": 11,
     },
     {
         "task_name": "Identify and Label Brain Networks",
@@ -45,6 +42,9 @@ TASKS = [
             {"ref": "media/image2.png", "caption": "Spatial maps of 12 large-scale functional brain networks commonly obtained from sICA (From Iraji et al., 2019)"},
         ],
         "url": "https://doi.org/10.1002/hbm.24580",
+        "category": "Research Foundations",
+        "tier": "Theory",
+        "order": 12,
     },
     {
         "task_name": "Learn Data Visualization Tools",
@@ -58,13 +58,9 @@ TASKS = [
             {"ref": "media/image7.png", "caption": "Suprathreshold-only display (left) vs. dual coded subthreshold and suprathreshold approach (right) — From Allen et al. (2012)"},
         ],
         "url": "https://doi.org/10.1016/j.neuron.2012.05.001",
-    },
-    {
-        "task_name": "Explore TReNDS Databases and Resources",
-        "emoji": "🗄️",
-        "para_range": (136, 200),
-        "images": [],
-        "url": None,
+        "category": "Analysis Methods",
+        "tier": "Hands-On",
+        "order": 4,
     },
 ]
 
@@ -73,19 +69,25 @@ def main():
     paragraphs = load_paragraphs(DOCX_PATH)
     image_blobs = extract_images(DOCX_PATH)
 
-    print(f"Creating {len(TASKS)} technical tasks...\n")
+    # Deduplicate: skip tasks that already exist
+    existing = query_data_source(TECHNICAL_DATA_SOURCE_ID)
+    tasks_to_create = [t for t in TASKS if t["task_name"] not in existing]
+    skipped = len(TASKS) - len(tasks_to_create)
+    if skipped:
+        print(f"Skipping {skipped} tasks that already exist.\n")
 
-    for i, task in enumerate(TASKS, 1):
-        start, end = task["para_range"]
-        desc = extract_description_by_range(paragraphs, start, end)
+    print(f"Creating {len(tasks_to_create)} technical tasks...\n")
 
-        print(f"  [{i}/{len(TASKS)}] {task['emoji']} {task['task_name']} ({len(desc)} chars)")
+    for i, task in enumerate(tasks_to_create, 1):
+        print(f"  [{i}/{len(tasks_to_create)}] {task['emoji']} {task['task_name']}")
         page_id = create_page(
             TECHNICAL_DATA_SOURCE_ID,
             task["task_name"],
-            desc,
             emoji=task["emoji"],
             url=task.get("url"),
+            category=task.get("category"),
+            tier=task.get("tier"),
+            order=task.get("order"),
         )
         if not page_id:
             continue
