@@ -1,24 +1,42 @@
 """
 Pull current page body content from Notion back to local .md files.
 
-Fetches blocks for every task that has a body_file, converts them to
-the same markdown-like format that append_body_content() reads, and
-overwrites the local file.
+Reads task metadata from YAML frontmatter in each content/<tab>/*.md file,
+fetches the matching Notion page blocks, converts them to Markdown, and
+overwrites the body section of the local file (preserving frontmatter).
 
 Usage:
-    python pull_notion.py               # pull all data sources
+    python pull_notion.py               # pull all tabs
+    python pull_notion.py --tab technical_onboarding   # pull one tab
     python pull_notion.py --dry-run     # show what would change, don't write
 """
 import os
 import sys
 import re
+
+import yaml
+
 from notion_api import _request
 from config import (
-    TECHNICAL_DATA_SOURCE_ID, HANDBOOK_DATA_SOURCE_ID,
-    TOOLS_DATA_SOURCE_ID, FUNDING_DATA_SOURCE_ID,
+    HANDBOOK_DATA_SOURCE_ID,
+    TECHNICAL_DATA_SOURCE_ID,
+    TOOLS_DATA_SOURCE_ID,
+    FUNDING_DATA_SOURCE_ID,
+    PROJECTS_DATA_SOURCE_ID,
 )
 
+TABS = {
+    "lab_intro":             HANDBOOK_DATA_SOURCE_ID,
+    "technical_onboarding":  TECHNICAL_DATA_SOURCE_ID,
+    "tools":                 TOOLS_DATA_SOURCE_ID,
+    "funding":               FUNDING_DATA_SOURCE_ID,
+    "projects":              PROJECTS_DATA_SOURCE_ID,
+}
+
+CONTENT_ROOT = os.path.join(os.path.dirname(__file__), "content")
+
 DRY_RUN = "--dry-run" in sys.argv
+TAB_ARG = next((sys.argv[i+1] for i, a in enumerate(sys.argv) if a == "--tab" and i+1 < len(sys.argv)), None)
 
 # ── Rich-text array → markdown string ──────────────────────────────────────
 
@@ -144,30 +162,56 @@ def blocks_to_md(blocks: list) -> str:
     return text.strip()
 
 
-# ── Pull a single data source ───────────────────────────────────────────────
+# ── Pull a single tab ──────────────────────────────────────────────────────
 
-def pull_data_source(data_source_id: str, tasks: list, content_dir: str, label: str):
+def _parse_frontmatter(filepath: str) -> tuple[dict | None, str]:
+    """Return (meta, raw_frontmatter_block) from an .md file."""
+    with open(filepath, encoding="utf-8") as fh:
+        raw = fh.read()
+    if not raw.startswith("---"):
+        return None, ""
+    parts = raw.split("---", 2)
+    if len(parts) < 3:
+        return None, ""
+    try:
+        meta = yaml.safe_load(parts[1]) or {}
+    except yaml.YAMLError:
+        return None, ""
+    return meta, "---" + parts[1] + "---"
+
+
+def pull_tab(tab_key: str, data_source_id: str, dry_run: bool = False) -> None:
+    tab_dir = os.path.join(CONTENT_ROOT, tab_key)
+    if not os.path.isdir(tab_dir):
+        print(f"  Directory not found: {tab_dir}")
+        return
+
     print(f"\n{'='*60}")
-    print(f"Pulling: {label}")
+    print(f"Pulling: {tab_key}")
     print(f"{'='*60}")
 
+    # Query Notion for task_name → page_id
     r = _request("post", f"data_sources/{data_source_id}/query", json={"page_size": 100})
     if r.status_code != 200:
         print(f"  Error querying data source: {r.status_code}")
         return
 
-    # Build name → page_id map
     name_to_id: dict[str, str] = {}
     for page in r.json().get("results", []):
         title_arr = page["properties"].get("Task Name", {}).get("title", [])
         if title_arr:
             name_to_id[title_arr[0]["plain_text"]] = page["id"]
 
-    for task in tasks:
-        body_file = task.get("body_file")
-        if not body_file:
+    for root, _dirs, files in os.walk(tab_dir):
+        for fname in sorted(files):
+            if not fname.endswith(".md"):
+                continue
+            fpath = os.path.join(root, fname)
+        meta, fm_block = _parse_frontmatter(fpath)
+        if not meta or not meta.get("task_name"):
             continue
-        task_name = task["task_name"]
+
+        task_name = meta["task_name"]
         if task_name not in name_to_id:
             print(f"  ⚠ Not found in Notion: {task_name}")
             continue
@@ -175,71 +219,34 @@ def pull_data_source(data_source_id: str, tasks: list, content_dir: str, label: 
         page_id = name_to_id[task_name]
         blocks = fetch_blocks(page_id)
         if not blocks:
-            print(f"  (empty) {task_name}")
+            print(f"  (empty body in Notion) {task_name}")
             continue
 
-        md = blocks_to_md(blocks)
+        body_md = blocks_to_md(blocks)
 
-        # Resolve file path (handle ../tools/ style relative refs)
-        file_path = os.path.normpath(os.path.join(content_dir, body_file))
-
-        if DRY_RUN:
-            print(f"  [dry-run] Would write {len(md)} chars -> {os.path.relpath(file_path)}")
+        if dry_run:
+            print(f"  [dry-run] {task_name} — {len(body_md)} chars → {fname}")
             continue
 
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(md + "\n")
-        print(f"  ✓ {task_name} → {os.path.relpath(file_path)}")
+        # Preserve the frontmatter, replace the body
+        with open(fpath, "w", encoding="utf-8") as fh:
+            fh.write(fm_block + "\n" + body_md + "\n")
+        print(f"  ✓ {task_name} → {fname}")
 
 
 # ── Main ────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import push_beginner_tasks
-    import push_technical_tasks
-    import push_handbook_tasks
-    import push_tools_tasks
-    import push_funding_tasks
-
-    BEGINNER_DIR = os.path.join(os.path.dirname(__file__), "content", "beginner")
-    HANDBOOK_DIR = os.path.join(os.path.dirname(__file__), "content", "handbook")
-    TOOLS_DIR    = os.path.join(os.path.dirname(__file__), "content", "tools")
-    FUNDING_DIR  = os.path.join(os.path.dirname(__file__), "content", "funding")
-
     if DRY_RUN:
         print("DRY RUN — no files will be written\n")
 
-    # Beginner tasks (shared TECHNICAL_DATA_SOURCE_ID)
-    pull_data_source(
-        TECHNICAL_DATA_SOURCE_ID,
-        [t for t in push_beginner_tasks.TASKS if t.get("body_file")],
-        BEGINNER_DIR,
-        "Foundations & Setup (beginner)",
-    )
+    tabs_to_pull = {TAB_ARG: TABS[TAB_ARG]} if TAB_ARG and TAB_ARG in TABS else TABS
 
-    # Handbook
-    pull_data_source(
-        HANDBOOK_DATA_SOURCE_ID,
-        [t for t in push_handbook_tasks.TASKS if t.get("body_file")],
-        HANDBOOK_DIR,
-        "General Info (handbook)",
-    )
+    if TAB_ARG and TAB_ARG not in TABS:
+        print(f"Unknown tab '{TAB_ARG}'. Valid tabs: {', '.join(TABS)}")
+        sys.exit(1)
 
-    # Tools
-    pull_data_source(
-        TOOLS_DATA_SOURCE_ID,
-        [t for t in push_tools_tasks.TASKS if t.get("body_file")],
-        TOOLS_DIR,
-        "Tools & Workflows",
-    )
+    for tab_key, ds_id in tabs_to_pull.items():
+        pull_tab(tab_key, ds_id, dry_run=DRY_RUN)
 
-    # Funding
-    pull_data_source(
-        FUNDING_DATA_SOURCE_ID,
-        [t for t in push_funding_tasks.TASKS if t.get("body_file")],
-        FUNDING_DIR,
-        "Funding & Fellowships",
-    )
-
-    print("\nSync complete.")
+    print("\nPull complete.")
