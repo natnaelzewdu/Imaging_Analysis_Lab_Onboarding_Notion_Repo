@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 NOTION_TOKEN = os.environ["NOTION_TOKEN"]
-NOTION_DATABASE_ID = os.environ["NOTION_DATABASE_ID"]
 HANDBOOK_DATA_SOURCE_ID = os.environ["HANDBOOK_DATA_SOURCE_ID"]
 TECHNICAL_DATA_SOURCE_ID = os.environ["TECHNICAL_DATA_SOURCE_ID"]
 TOOLS_DATA_SOURCE_ID = os.environ["TOOLS_DATA_SOURCE_ID"]

@@ -361,7 +361,6 @@ Suggested agent workflow for a content change:
 | Variable                  | Description                                          |
 |---------------------------|------------------------------------------------------|
 | `NOTION_TOKEN`            | **Notion Internal Integration Token** (secret)       |
-| `NOTION_DATABASE_ID`      | Legacy, kept for backwards compatibility             |
 | `HANDBOOK_DATA_SOURCE_ID` | Notion database ID for the Lab Intro tab             |
 | `TECHNICAL_DATA_SOURCE_ID`| Notion database ID for the Technical Onboarding tab  |
 | `TOOLS_DATA_SOURCE_ID`    | Notion database ID for the Tools & Workflows tab     |
@@ -374,21 +373,21 @@ Suggested agent workflow for a content change:
 
 ### How to find each ID
 
-**All values except `WELCOME_PAGE_ID`** come from the **Environment Variables**
-spreadsheet in the [Onboarding Resources](https://studentgsu-my.sharepoint.com/:f:/r/personal/nalemayehu3_student_gsu_edu/Documents/Onboarding%20Resources?csf=1&web=1&e=dvr9zc)
-SharePoint folder. You must be granted access to that folder first - ask
-someone with edit permissions to add you.
+All values are stored in the **Environment Variables** spreadsheet in the
+[Onboarding Resources](https://studentgsu-my.sharepoint.com/:f:/r/personal/nalemayehu3_student_gsu_edu/Documents/Onboarding%20Resources?csf=1&web=1&e=dvr9zc)
+SharePoint folder. Request access from someone with edit permissions if you
+do not have it yet.
 
-**`WELCOME_PAGE_ID`** is not in the spreadsheet because it is specific to how
-the Welcome content is structured. Find it yourself:
+**`WELCOME_PAGE_ID` - if setting up a fresh workspace:**
+The value in the spreadsheet is for this lab's Notion workspace. If you are
+configuring a different workspace, find the ID yourself:
 
 1. Click the **Welcome** tab in Notion.
 2. **Double-click** the entry inside to open it as a full page.
-3. Look at the URL bar - it will contain `&p=` followed by a UUID:
+3. Copy the UUID after `&p=` in the URL:
    ```
    notion.so/...?v=...&p=3550d69bb5ad80ccabb5f1f9feca76c7&pm=c
                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          copy this UUID as WELCOME_PAGE_ID
    ```
-4. Add it to your `.env`: `WELCOME_PAGE_ID=<that-uuid>`
+4. Add it to `.env`: `WELCOME_PAGE_ID=<that-uuid>`
 
