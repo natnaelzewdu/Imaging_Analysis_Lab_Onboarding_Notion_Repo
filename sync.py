@@ -2,22 +2,24 @@
 Sync onboarding content to Notion.
 
 Each content/<tab>/ directory maps to one Notion data source (tab).
+Tab configuration lives in content/<tab>/_tab.yaml — rename a folder freely,
+no code changes needed.
 Task metadata lives in YAML frontmatter at the top of each .md file.
 Files without a 'task_name' frontmatter key are ignored.
 
 Usage:
-    python sync.py                          # Sync all tabs (idempotent)
-    python sync.py --tab technical_onboarding  # Sync one tab
-    python sync.py --delete                 # Archive existing tasks then re-sync
+    python sync.py                          # Reconcile all tabs
+    python sync.py --tab technical_onboarding  # Reconcile one tab
+    python sync.py --delete                 # Full wipe + re-sync (use after editing body content)
     python sync.py --dry-run                # Preview without writing to Notion
     python sync.py --status                 # Show local task counts per tab
 
 Frontmatter keys (all optional except task_name):
     task_name  : (required) Exact title shown in Notion
     emoji      : Page icon  (default: 📌)
-    category   : Select property value
+    category   : Select property value — should match the subfolder name
     tier       : Select property value  (Theory | Hands-On)
-    order      : Number property for sorting
+    order      : Number property for sorting within a category
     url        : URL property
 """
 
@@ -31,13 +33,6 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf-8-s
 
 import yaml  # PyYAML
 
-from config import (
-    HANDBOOK_DATA_SOURCE_ID,
-    TECHNICAL_DATA_SOURCE_ID,
-    TOOLS_DATA_SOURCE_ID,
-    FUNDING_DATA_SOURCE_ID,
-    PROJECTS_DATA_SOURCE_ID,
-)
 from notion_api import (
     append_body_content,
     archive_page,
@@ -46,34 +41,50 @@ from notion_api import (
     query_data_source,
 )
 
-# ---------------------------------------------------------------------------
-# Tab registry — maps folder name → Notion data source env var + display name
-# ---------------------------------------------------------------------------
-
-TABS: dict[str, dict] = {
-    "lab_intro": {
-        "data_source_id": HANDBOOK_DATA_SOURCE_ID,
-        "label": "Lab Intro",
-    },
-    "technical_onboarding": {
-        "data_source_id": TECHNICAL_DATA_SOURCE_ID,
-        "label": "Technical Onboarding",
-    },
-    "tools": {
-        "data_source_id": TOOLS_DATA_SOURCE_ID,
-        "label": "Tools & Workflows",
-    },
-    "funding": {
-        "data_source_id": FUNDING_DATA_SOURCE_ID,
-        "label": "Funding & Fellowships",
-    },
-    "projects": {
-        "data_source_id": PROJECTS_DATA_SOURCE_ID,
-        "label": "Projects",
-    },
-}
-
 CONTENT_ROOT = os.path.join(os.path.dirname(__file__), "content")
+
+
+# ---------------------------------------------------------------------------
+# Dynamic tab discovery — reads _tab.yaml from each content subfolder
+# ---------------------------------------------------------------------------
+
+def discover_tabs() -> dict[str, dict]:
+    """
+    Scan content/ for subdirectories containing _tab.yaml and build the tab
+    registry.  This means you can rename a tab folder without touching any
+    Python code — just rename the directory.
+
+    _tab.yaml format:
+        label: "Human-readable tab name"
+        notion_env_var: FUNDING_DATA_SOURCE_ID
+    """
+    import importlib
+    config_mod = importlib.import_module("config")
+
+    tabs: dict[str, dict] = {}
+    if not os.path.isdir(CONTENT_ROOT):
+        return tabs
+
+    for entry in sorted(os.listdir(CONTENT_ROOT)):
+        tab_dir = os.path.join(CONTENT_ROOT, entry)
+        config_file = os.path.join(tab_dir, "_tab.yaml")
+        if not os.path.isdir(tab_dir) or not os.path.isfile(config_file):
+            continue
+        with open(config_file, encoding="utf-8") as fh:
+            cfg = yaml.safe_load(fh) or {}
+        env_var = cfg.get("notion_env_var")
+        if not env_var:
+            print(f"  ⚠  {config_file}: missing 'notion_env_var' key — skipping tab.")
+            continue
+        data_source_id = getattr(config_mod, env_var, None) or os.environ.get(env_var)
+        if not data_source_id:
+            print(f"  ⚠  {config_file}: env var '{env_var}' is not set — skipping tab.")
+            continue
+        tabs[entry] = {
+            "data_source_id": data_source_id,
+            "label": cfg.get("label", entry),
+        }
+    return tabs
 
 
 # ---------------------------------------------------------------------------
@@ -221,10 +232,11 @@ def sync_tab(
 # ---------------------------------------------------------------------------
 
 def show_status() -> None:
+    tabs = discover_tabs()
     print("\nLocal task inventory")
     print("=" * 60)
     total = 0
-    for tab_key, info in TABS.items():
+    for tab_key, info in tabs.items():
         tasks = load_tab_tasks(tab_key)
         total += len(tasks)
         print(f"\n  {info['label']}  ({len(tasks)} tasks)  [{tab_key}/]")
@@ -232,7 +244,7 @@ def show_status() -> None:
             cat = t.get("category", "—")
             order = t.get("order", "—")
             print(f"    {t.get('emoji', '📌')}  #{order:>2}  [{cat}]  {t['task_name']}")
-    print(f"\nTotal: {total} tasks across {len(TABS)} tabs")
+    print(f"\nTotal: {total} tasks across {len(tabs)} tabs")
 
 
 # ---------------------------------------------------------------------------
@@ -255,9 +267,8 @@ Examples:
     )
     parser.add_argument(
         "--tab",
-        choices=list(TABS.keys()),
         metavar="TAB",
-        help=f"Only sync this tab. Choices: {', '.join(TABS)}",
+        help="Only sync this tab folder name (e.g. technical_onboarding).",
     )
     parser.add_argument(
         "--delete",
@@ -280,9 +291,15 @@ Examples:
         show_status()
         return
 
-    tabs_to_sync = (
-        {args.tab: TABS[args.tab]} if args.tab else TABS
-    )
+    tabs = discover_tabs()
+
+    if args.tab:
+        if args.tab not in tabs:
+            print(f"Unknown tab '{args.tab}'. Available tabs: {', '.join(tabs)}")
+            sys.exit(1)
+        tabs_to_sync = {args.tab: tabs[args.tab]}
+    else:
+        tabs_to_sync = tabs
 
     for tab_key, info in tabs_to_sync.items():
         sync_tab(

@@ -17,28 +17,8 @@ import re
 import yaml
 
 from notion_api import _request
-from config import (
-    HANDBOOK_DATA_SOURCE_ID,
-    TECHNICAL_DATA_SOURCE_ID,
-    TOOLS_DATA_SOURCE_ID,
-    FUNDING_DATA_SOURCE_ID,
-    PROJECTS_DATA_SOURCE_ID,
-)
 
-TABS = {
-    "lab_intro":             HANDBOOK_DATA_SOURCE_ID,
-    "technical_onboarding":  TECHNICAL_DATA_SOURCE_ID,
-    "tools":                 TOOLS_DATA_SOURCE_ID,
-    "funding":               FUNDING_DATA_SOURCE_ID,
-    "projects":              PROJECTS_DATA_SOURCE_ID,
-}
-
-CONTENT_ROOT = os.path.join(os.path.dirname(__file__), "content")
-
-DRY_RUN = "--dry-run" in sys.argv
-TAB_ARG = next((sys.argv[i+1] for i, a in enumerate(sys.argv) if a == "--tab" and i+1 < len(sys.argv)), None)
-
-# ── Rich-text array → markdown string ──────────────────────────────────────
+# ── Pull a single tab ──────────────────────────────────────────────────────
 
 def rt_to_md(rich_text: list) -> str:
     result = ""
@@ -240,11 +220,13 @@ if __name__ == "__main__":
     if DRY_RUN:
         print("DRY RUN — no files will be written\n")
 
-    tabs_to_pull = {TAB_ARG: TABS[TAB_ARG]} if TAB_ARG and TAB_ARG in TABS else TABS
+    tabs = discover_tabs()
 
-    if TAB_ARG and TAB_ARG not in TABS:
-        print(f"Unknown tab '{TAB_ARG}'. Valid tabs: {', '.join(TABS)}")
+    if TAB_ARG and TAB_ARG not in tabs:
+        print(f"Unknown tab '{TAB_ARG}'. Valid tabs: {', '.join(tabs)}")
         sys.exit(1)
+
+    tabs_to_pull = {TAB_ARG: tabs[TAB_ARG]} if TAB_ARG else tabs
 
     for tab_key, ds_id in tabs_to_pull.items():
         pull_tab(tab_key, ds_id, dry_run=DRY_RUN)
