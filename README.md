@@ -191,14 +191,15 @@ updated metadata.
 
 ### Rename a category subfolder
 
-Category subfolders are for **local organisation only** — the `category:` key
-in each file's frontmatter is what actually sets the Notion category property.
-Both need to stay in sync.
+The **subfolder name is the category** — `sync.py` derives the Notion
+`Category` property directly from the parent folder name, ignoring any
+`category:` key in the frontmatter.  Renaming a folder is all you need.
 
 1. Rename the subfolder (e.g. `Fellowships/` → `Grants and Fellowships/`).
-2. Update `category:` in the frontmatter of every `.md` file inside it.
-3. Run `python sync.py --tab <folder> --delete` — old pages archived, new ones
+2. Run `python sync.py --tab <folder> --delete` — old pages archived, new ones
    created with the updated category name.
+
+No file edits required.
 
 ### Rename a tab folder
 
@@ -263,7 +264,7 @@ python pull_notion.py --dry-run                    # preview only
 |-------------|----------|-------------------------------------------------------|
 | `task_name` | **Yes**  | Exact title shown in Notion                           |
 | `emoji`     | No       | Page icon (default: `📌`)                             |
-| `category`  | No       | Notion `Category` select property                     |
+| `category`  | No       | Fallback if file is at tab root (no subfolder). **For files inside a category subfolder the folder name is used automatically — this key is ignored.** |
 | `tier`      | No       | `Theory` or `Hands-On`                                |
 | `order`     | No       | Integer — controls sort order within a category       |
 | `url`       | No       | Reference link shown in Notion                        |

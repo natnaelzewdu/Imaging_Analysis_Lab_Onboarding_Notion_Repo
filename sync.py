@@ -121,8 +121,14 @@ def parse_md(filepath: str) -> tuple[dict | None, str]:
 def load_tab_tasks(tab_key: str) -> list[dict]:
     """
     Load all publishable tasks from a tab directory (including category subfolders),
-    sorted by order.  Any .md file anywhere under content/<tab>/ that has a
-    'task_name' frontmatter key is included.
+    sorted by order.
+
+    Category is derived from the **parent subfolder name** — not the frontmatter
+    key.  This means renaming a category folder automatically updates the Notion
+    category on the next sync; no file edits are needed.
+
+    Files sitting directly at the tab root (no subfolder) fall back to the
+    'category' frontmatter key if present.
     """
     tab_dir = os.path.join(CONTENT_ROOT, tab_key)
     if not os.path.isdir(tab_dir):
@@ -137,6 +143,12 @@ def load_tab_tasks(tab_key: str) -> list[dict]:
             meta, body = parse_md(fpath)
             if not meta or not meta.get("task_name"):
                 continue
+
+            # Derive category from parent folder name (overrides frontmatter)
+            rel = os.path.relpath(root, tab_dir)
+            if rel != ".":
+                meta["category"] = rel  # folder name wins
+
             tasks.append({**meta, "_body": body, "_file": os.path.relpath(fpath, tab_dir)})
 
     tasks.sort(key=lambda t: (t.get("order") or 999))
