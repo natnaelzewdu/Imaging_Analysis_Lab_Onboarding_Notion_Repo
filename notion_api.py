@@ -93,6 +93,25 @@ def archive_page(page_id: str) -> bool:
     return True
 
 
+def clear_page_blocks(page_id: str) -> None:
+    """Delete all block children of a page (used before re-pushing plain page content)."""
+    cursor = None
+    while True:
+        params: dict = {"page_size": 100}
+        if cursor:
+            params["start_cursor"] = cursor
+        resp = _request("get", f"blocks/{page_id}/children", params=params)
+        if resp.status_code != 200:
+            print(f"  Error fetching blocks: {resp.status_code}")
+            return
+        data = resp.json()
+        for block in data.get("results", []):
+            _request("patch", f"blocks/{block['id']}", json={"in_trash": True})
+        if not data.get("has_more"):
+            break
+        cursor = data.get("next_cursor")
+
+
 def set_page_icon(page_id: str, emoji: str) -> bool:
     """Set an emoji icon on a page."""
     resp = _request(

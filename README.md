@@ -6,6 +6,28 @@ All task content lives in plain Markdown files. A single command syncs everythin
 
 ---
 
+## What you are building
+
+![Notion onboarding template - Welcome tab](assets/notion_welcome.png)
+
+The Notion workspace is an **Onboarding Template** with a row of **tabs** across the top. Each tab is a separate section of the onboarding experience. The **Welcome** tab is a plain free-form page - it holds introductory text, lab leadership info, and photos. The remaining tabs (Lab Intro, Technical Onboarding, Tools & Workflows, Funding & Fellowships, Projects) are databases where each row is a structured task.
+
+---
+
+![Notion onboarding template - Technical Onboarding tab with task detail](assets/notion_task_view.png)
+
+This is what a **database tab** looks like. There are four concepts to understand:
+
+**Tab** - One of the top-level sections (e.g. Technical Onboarding). Each tab maps to one folder under `content/` in this repo. The connection between folder and Notion database is defined in the `_tab.yaml` file inside that folder.
+
+**Category** - The coloured group headers inside a tab (e.g. Research Foundations, Computing Environment, Analysis Methods). Each category is a subfolder inside the tab folder, e.g. `content/technical_onboarding/Research Foundations/`. The subfolder name is the category name - rename the folder and the category updates in Notion automatically on the next sync.
+
+**Task** - Each row in the database (e.g. "Understand What fMRI Measures"). Each task maps to one `.md` file inside the category subfolder. The file's YAML frontmatter (the `---` block at the top) sets the task name, emoji, tier, order, and URL. The body of the file becomes the task's page content.
+
+**Page** - Clicking a task row opens its full page (shown on the right). This is where the detailed content lives - headings, explanations, bullet points, links, and images. Everything you write in the `.md` file body appears here.
+
+---
+
 ## Table of Contents
 
 - [How it works](#how-it-works)
@@ -37,6 +59,21 @@ Each Notion tab corresponds to a folder under `content/`:
 
 Every `.md` file with a YAML frontmatter block (see the [Frontmatter reference](#frontmatter-reference) section) is treated as one Notion task page. Files without frontmatter are ignored by the sync script.
 
+**What is frontmatter?**
+Frontmatter is a short block of structured metadata at the very top of a Markdown file, fenced by `---` lines. It tells `sync.py` how to create the Notion page (title, icon, ordering, etc.) without mixing that information into the readable content below. If you have used Jekyll, Hugo, or any static site generator you have seen this pattern before. See the [official YAML spec](https://yaml.org/spec/1.2.2/) if you want to learn more about the format used inside the `---` block.
+
+```markdown
+---
+task_name: "Understand What fMRI Measures"
+emoji: "🧲"
+tier: Theory
+order: 1
+url: "https://example.com"
+---
+
+## Body content starts here...
+```
+
 ---
 
 ## Repository structure
@@ -49,8 +86,9 @@ config.py                      ← loads env vars (do not edit)
 notion_api.py                  ← Notion API helpers (do not edit)
 requirements.txt
 
-content/
-  lab_intro/                   ← Lab Intro tab
+content/  welcome/                     <- Welcome plain page
+    _page.yaml                 <- page config: label + notion_env_var
+    welcome.md                 <- full page content  lab_intro/                   ← Lab Intro tab
     _tab.yaml                  ← tab config: label + notion_env_var
     Lab Culture & Conduct/     ← category subfolder
       read_lab_handbook.md
@@ -223,22 +261,44 @@ renaming a tab folder requires **no code changes**.
 4. Create category subfolders and `.md` files with frontmatter as normal.
 5. Run `python sync.py --tab reading_list`.
 
+### Edit the Welcome page (or any plain Notion page)
+
+The Welcome tab is a plain Notion page, not a database. Its content is managed
+from `content/welcome/welcome.md`. Editing it always does a full wipe + rewrite
+because plain pages have no named rows to reconcile against.
+
+1. Edit `content/welcome/welcome.md`.
+2. Run `python sync.py --tab welcome`.
+
+To add support for another plain page (e.g. a People directory page):
+
+1. Create a new folder under `content/` (e.g. `content/people/`).
+2. Add a `_page.yaml` inside it:
+   ```yaml
+   label: "People"
+   notion_env_var: PEOPLE_PAGE_ID
+   ```
+3. Add `PEOPLE_PAGE_ID` to `.env` and `config.py`.
+4. Create a `.md` file with the page content.
+5. Run `python sync.py --tab people`.
+
 ### Sync to Notion
 
 ```bash
-# Reconcile all tabs (create new + archive removed - safe to run anytime)
+# Sync everything (plain pages + all database tabs)
 python sync.py
 
-# Reconcile one tab only
+# Sync one tab or page by folder name
 python sync.py --tab technical_onboarding
+python sync.py --tab welcome
 
-# Preview what would happen without touching Notion
+# Preview without touching Notion
 python sync.py --dry-run
 
-# Force full wipe + re-sync a tab (required after editing body content)
+# Full wipe + re-sync a database tab (required after editing body content)
 python sync.py --tab lab_intro --delete
 
-# Check local task inventory
+# Show local inventory
 python sync.py --status
 ```
 
@@ -257,25 +317,6 @@ python pull_notion.py --dry-run                    # preview only
 > body section below it.
 
 ## Frontmatter reference
-
-**What is frontmatter?**
-Frontmatter is a short block of structured metadata placed at the very top of a Markdown file, fenced by `---` lines. It tells `sync.py` how to create the Notion page (title, icon, ordering, etc.) without mixing that information into the readable content below. If you have used Jekyll, Hugo, or any static site generator you have seen this pattern before.
-
-Official YAML spec (the format used inside the `---` block): https://yaml.org/spec/1.2.2/
-
-Example:
-
-```markdown
----
-task_name: "Understand What fMRI Measures"
-emoji: "🧲"
-tier: Theory
-order: 1
-url: "https://example.com"
----
-
-## Body content starts here...
-```
 
 | Key         | Required | Description                                           |
 |-------------|----------|---------------------------------------------------------|

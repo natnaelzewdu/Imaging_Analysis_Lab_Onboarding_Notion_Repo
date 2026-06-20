@@ -36,6 +36,7 @@ import yaml  # PyYAML
 from notion_api import (
     append_body_content,
     archive_page,
+    clear_page_blocks,
     create_page,
     ensure_database_properties,
     query_data_source,
@@ -88,8 +89,97 @@ def discover_tabs() -> dict[str, dict]:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Plain-page discovery — reads _page.yaml from each content subfolder
 # ---------------------------------------------------------------------------
+
+def discover_pages() -> dict[str, dict]:
+    """
+    Scan content/ for subdirectories containing _page.yaml. These are plain
+    Notion pages (not databases) whose full content is managed as a single
+    .md file.
+
+    _page.yaml format:
+        label: "Welcome"
+        notion_env_var: WELCOME_PAGE_ID
+    """
+    import importlib
+    config_mod = importlib.import_module("config")
+
+    pages: dict[str, dict] = {}
+    if not os.path.isdir(CONTENT_ROOT):
+        return pages
+
+    for entry in sorted(os.listdir(CONTENT_ROOT)):
+        page_dir = os.path.join(CONTENT_ROOT, entry)
+        config_file = os.path.join(page_dir, "_page.yaml")
+        if not os.path.isdir(page_dir) or not os.path.isfile(config_file):
+            continue
+        with open(config_file, encoding="utf-8") as fh:
+            cfg = yaml.safe_load(fh) or {}
+        env_var = cfg.get("notion_env_var")
+        if not env_var:
+            print(f"  Warning: {config_file} missing 'notion_env_var' key - skipping.")
+            continue
+        page_id = getattr(config_mod, env_var, None) or os.environ.get(env_var)
+        if not page_id:
+            print(f"  Warning: env var '{env_var}' is not set - skipping {entry}.")
+            continue
+        pages[entry] = {
+            "page_id": page_id,
+            "label": cfg.get("label", entry),
+        }
+    return pages
+
+
+# ---------------------------------------------------------------------------
+# Plain-page sync
+# ---------------------------------------------------------------------------
+
+def sync_page(
+    folder_key: str,
+    page_id: str,
+    label: str,
+    dry_run: bool = False,
+) -> None:
+    """
+    Replace the full content of a plain Notion page from a local .md file.
+    Unlike database tabs, this always does a full wipe + rewrite because there
+    are no named rows to reconcile against.
+    """
+    print(f"\n{'=' * 60}")
+    print(f"  {label}  (plain page)")
+    print(f"{'=' * 60}")
+
+    folder = os.path.join(CONTENT_ROOT, folder_key)
+    md_files = sorted(f for f in os.listdir(folder) if f.endswith(".md"))
+
+    if not md_files:
+        print("  No .md files found.")
+        return
+
+    # Concatenate all .md files in the folder, stripping frontmatter if present
+    body_parts = []
+    for fname in md_files:
+        with open(os.path.join(folder, fname), encoding="utf-8") as fh:
+            raw = fh.read()
+        if raw.startswith("---"):
+            parts = raw.split("---", 2)
+            raw = parts[2].lstrip("\n") if len(parts) >= 3 else raw
+        body_parts.append(raw.strip())
+    body = "\n\n".join(body_parts)
+
+    if dry_run:
+        print(f"  [DRY RUN] Would replace page content ({len(body)} chars from {len(md_files)} file(s)).")
+        return
+
+    print(f"  Clearing existing page content...")
+    clear_page_blocks(page_id)
+    print(f"  Pushing new content ({len(body)} chars)...")
+    append_body_content(page_id, body)
+    print(f"\n  Done.")
+
+
+
 
 def parse_md(filepath: str) -> tuple[dict | None, str]:
     """
@@ -245,7 +335,8 @@ def sync_tab(
 
 def show_status() -> None:
     tabs = discover_tabs()
-    print("\nLocal task inventory")
+    pages = discover_pages()
+    print("\nLocal inventory")
     print("=" * 60)
     total = 0
     for tab_key, info in tabs.items():
@@ -253,10 +344,16 @@ def show_status() -> None:
         total += len(tasks)
         print(f"\n  {info['label']}  ({len(tasks)} tasks)  [{tab_key}/]")
         for t in tasks:
-            cat = t.get("category", "—")
-            order = t.get("order", "—")
+            cat = t.get("category", "-")
+            order = t.get("order", "-")
             print(f"    {t.get('emoji', '📌')}  #{order:>2}  [{cat}]  {t['task_name']}")
-    print(f"\nTotal: {total} tasks across {len(tabs)} tabs")
+    if pages:
+        print(f"\n  Plain pages:")
+        for folder_key, info in pages.items():
+            folder = os.path.join(CONTENT_ROOT, folder_key)
+            md_files = [f for f in os.listdir(folder) if f.endswith(".md")]
+            print(f"    {info['label']}  ({len(md_files)} file(s))  [{folder_key}/]")
+    print(f"\nTotal: {total} tasks across {len(tabs)} tabs + {len(pages)} plain page(s)")
 
 
 # ---------------------------------------------------------------------------
@@ -269,23 +366,24 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python sync.py                            # sync everything (safe, idempotent)
-  python sync.py --tab technical_onboarding # sync one tab only
+  python sync.py                            # sync everything
+  python sync.py --tab technical_onboarding # sync one database tab
+  python sync.py --tab welcome              # sync the Welcome plain page
   python sync.py --delete                   # wipe + re-sync all tabs
   python sync.py --tab lab_intro --delete   # wipe + re-sync one tab
   python sync.py --dry-run                  # preview without touching Notion
-  python sync.py --status                   # count local tasks per tab
+  python sync.py --status                   # show local inventory
         """,
     )
     parser.add_argument(
         "--tab",
         metavar="TAB",
-        help="Only sync this tab folder name (e.g. technical_onboarding).",
+        help="Only sync this folder (works for both database tabs and plain pages).",
     )
     parser.add_argument(
         "--delete",
         action="store_true",
-        help="Archive all existing Notion pages in the target tab(s) before syncing.",
+        help="Full wipe + re-sync. Required after editing body content.",
     )
     parser.add_argument(
         "--dry-run",
@@ -295,7 +393,7 @@ Examples:
     parser.add_argument(
         "--status",
         action="store_true",
-        help="Show local task inventory and exit.",
+        help="Show local inventory and exit.",
     )
     args = parser.parse_args()
 
@@ -304,23 +402,26 @@ Examples:
         return
 
     tabs = discover_tabs()
+    pages = discover_pages()
+    all_folders = {**tabs, **pages}
 
     if args.tab:
-        if args.tab not in tabs:
-            print(f"Unknown tab '{args.tab}'. Available tabs: {', '.join(tabs)}")
+        if args.tab not in all_folders:
+            print(f"Unknown folder '{args.tab}'. Available: {', '.join(all_folders)}")
             sys.exit(1)
-        tabs_to_sync = {args.tab: tabs[args.tab]}
+        # Route to the right sync function
+        if args.tab in pages:
+            sync_page(args.tab, pages[args.tab]["page_id"], pages[args.tab]["label"], dry_run=args.dry_run)
+        else:
+            sync_tab(args.tab, tabs[args.tab]["data_source_id"], tabs[args.tab]["label"],
+                     delete_first=args.delete, dry_run=args.dry_run)
     else:
-        tabs_to_sync = tabs
-
-    for tab_key, info in tabs_to_sync.items():
-        sync_tab(
-            tab_key,
-            info["data_source_id"],
-            info["label"],
-            delete_first=args.delete,
-            dry_run=args.dry_run,
-        )
+        # Sync all plain pages first, then all database tabs
+        for folder_key, info in pages.items():
+            sync_page(folder_key, info["page_id"], info["label"], dry_run=args.dry_run)
+        for tab_key, info in tabs.items():
+            sync_tab(tab_key, info["data_source_id"], info["label"],
+                     delete_first=args.delete, dry_run=args.dry_run)
 
     if not args.dry_run:
         print("\nSync complete.")
