@@ -10,7 +10,7 @@ All task content lives in plain Markdown files. A single command syncs everythin
 
 ![Notion onboarding template - Welcome tab](assets/notion_welcome.png)
 
-The Notion workspace is an **Onboarding Template** with a row of **tabs** across the top. Each tab is a separate section of the onboarding experience. The **Welcome** tab is a plain free-form page - it holds introductory text, lab leadership info, and photos. The remaining tabs (Lab Intro, Technical Onboarding, Tools & Workflows, Funding & Fellowships, Projects) are databases where each row is a structured task.
+The Notion workspace is an **Onboarding Template** with a row of **tabs** across the top. Each tab is a separate section of the onboarding experience. The **Welcome** and **Lab Leadership** tabs use a Feed-view database where each entry is a document-style page. The remaining tabs (Lab Intro, Technical Onboarding, Tools & Workflows, Funding & Fellowships, Projects) use a Table-view database where each row is a structured task.
 
 ---
 
@@ -18,7 +18,7 @@ The Notion workspace is an **Onboarding Template** with a row of **tabs** across
 
 This is what a **database tab** looks like. There are four concepts to understand:
 
-**Tab** - One of the top-level sections (e.g. Technical Onboarding). Each tab maps to one folder under `content/` in this repo. The connection between folder and Notion database is defined in the `_tab.yaml` file inside that folder.
+**Tab** - One of the top-level sections (e.g. Technical Onboarding). Each tab maps to one folder under `content/` in this repo. The connection between the folder and its Notion database is defined in the `_tab.yaml` file (for Table tabs) or `_page.yaml` file (for Feed tabs) inside that folder.
 
 **Category** - The coloured group headers inside a tab (e.g. Research Foundations, Computing Environment, Analysis Methods). Each category is a subfolder inside the tab folder, e.g. `content/technical_onboarding/Research Foundations/`. The subfolder name is the category name - rename the folder and the category updates in Notion automatically on the next sync.
 
@@ -49,14 +49,15 @@ This is what a **database tab** looks like. There are four concepts to understan
 
 Each Notion tab corresponds to a folder under `content/`:
 
-| Notion tab           | Local folder                        | Env var                    |
-|----------------------|-------------------------------------|----------------------------|
-| Welcome              | `content/welcome/`                  | `WELCOME_PAGE_ID`          |
-| Lab Intro            | `content/lab_intro/`                | `HANDBOOK_DATA_SOURCE_ID`  |
-| Technical Onboarding | `content/technical_onboarding/`     | `TECHNICAL_DATA_SOURCE_ID` |
-| Tools & Workflows    | `content/tools/`                    | `TOOLS_DATA_SOURCE_ID`     |
-| Funding & Fellowships| `content/funding/`                  | `FUNDING_DATA_SOURCE_ID`   |
-| Projects             | `content/projects/`                 | `PROJECTS_DATA_SOURCE_ID`  |
+| Notion tab           | Local folder                        | Env var                      |
+|----------------------|-------------------------------------|------------------------------|
+| Welcome              | `content/welcome/`                  | `WELCOME_PAGE_ID`            |
+| Lab Leadership       | `content/lab_leadership/`           | `LAB_LEADERSHIP_PAGE_ID`     |
+| Lab Intro            | `content/lab_intro/`                | `HANDBOOK_DATA_SOURCE_ID`    |
+| Technical Onboarding | `content/technical_onboarding/`     | `TECHNICAL_DATA_SOURCE_ID`   |
+| Tools & Workflows    | `content/tools/`                    | `TOOLS_DATA_SOURCE_ID`       |
+| Funding & Fellowships| `content/funding/`                  | `FUNDING_DATA_SOURCE_ID`     |
+| Projects             | `content/projects/`                 | `PROJECTS_DATA_SOURCE_ID`    |
 
 Every `.md` file with a YAML frontmatter block (see the [Frontmatter reference](#frontmatter-reference) section) is treated as one Notion task page. Files without frontmatter are ignored by the sync script.
 
@@ -80,36 +81,42 @@ url: "https://example.com"
 ## Repository structure
 
 ```
-.env.example                   ← copy to .env and fill in your tokens
-sync.py                        ← THE entry point - syncs .md files → Notion
-pull_notion.py                 ← pull Notion content back to .md files
-config.py                      ← loads env vars (do not edit)
-notion_api.py                  ← Notion API helpers (do not edit)
+.env.example                   <- copy to .env and fill in your tokens
+sync.py                        <- THE entry point - syncs .md files to Notion
+pull_notion.py                 <- pull Notion content back to .md files
+config.py                      <- loads env vars (do not edit)
+notion_api.py                  <- Notion API helpers (do not edit)
 requirements.txt
 
-content/  welcome/                     <- Welcome plain page
+content/
+  welcome/                     <- Welcome tab (Feed view)
     _page.yaml                 <- page config: label + notion_env_var
-    welcome.md                 <- full page content  lab_intro/                   ← Lab Intro tab
-    _tab.yaml                  ← tab config: label + notion_env_var
-    Lab Culture & Conduct/     ← category subfolder
+    welcome.md                 <- full page content
+  lab_leadership/              <- Lab Leadership tab (Feed view)
+    _page.yaml
+    lab_leadership.md
+  lab_intro/                   <- Lab Intro tab (Table view)
+    _tab.yaml                  <- tab config: label + notion_env_var
+    Lab Culture & Conduct/     <- category subfolder
       read_lab_handbook.md
       ...
-  technical_onboarding/        ← Technical Onboarding tab
+  technical_onboarding/        <- Technical Onboarding tab (Table view)
     _tab.yaml
     Research Foundations/
     Computing Environment/
     ...
-  tools/                       ← Tools & Workflows tab
+  tools/                       <- Tools & Workflows tab (Table view)
     _tab.yaml
     ...
-  funding/                     ← Funding & Fellowships tab
+  funding/                     <- Funding & Fellowships tab (Table view)
     _tab.yaml
     ...
-  projects/                    ← Projects tab
+  projects/                    <- Projects tab (Table view)
     _tab.yaml
     ...
 
-data/                          ← Raw source files (Word docs, spreadsheets, photos)
+data/                          <- Raw source files (Word docs, spreadsheets, photos)
+assets/                        <- Screenshots used in this README
 ```
 
 ---
@@ -246,7 +253,8 @@ renaming a tab folder requires **no code changes**.
    `notion_env_var`. Run `python sync.py --tab money` as normal.
 
 > To change the **display label** shown in terminal output, edit the `label:`
-> field in `content/<tab>/_tab.yaml`. This does not affect Notion.
+> field in `content/<tab>/_tab.yaml` (Table tabs) or `_page.yaml` (Feed tabs).
+> This does not affect Notion.
 
 ### Add a new Notion tab or page
 
@@ -280,8 +288,11 @@ appear here. Copy its name - you will need it to find the ID in the next step.
 
 ![Manage data sources list showing all data sources including Lab Leadership](assets/create_new_page_or_tab_2.png)
 
-To get the data source ID, open the new tab in Notion and copy the UUID from
-the URL (the part before `?v=`). Add it to your `.env` and `config.py`.
+To get the ID you need, it depends on the view type:
+
+- **Table tab** - The UUID before `?v=` in the URL is your data source ID. Add it to `.env` and `config.py` as `MY_TAB_DATA_SOURCE_ID`.
+
+- **Feed tab (plain page)** - The UUID before `?v=` is the **database** ID, which you do not need. You need the **page entry** ID instead. Create one entry inside the Feed, double-click it to open it fully, then copy the UUID after `&p=` in the URL. Add that to `.env` and `config.py` as `MY_PAGE_ID`.
 
 #### Step 3 - Link to an existing data source (if connecting later)
 
@@ -321,14 +332,14 @@ source by name and select it.
 > See the `WELCOME_PAGE_ID` instructions in the [Environment variables](#environment-variables)
 > section for details.
 
-### Edit the Welcome page (or any plain Notion page)
+### Edit a Welcome or Lab Leadership page (Feed-view tabs)
 
-The Welcome tab is a plain Notion page, not a database. Its content is managed
-from `content/welcome/welcome.md`. Editing it always does a full wipe + rewrite
-because plain pages have no named rows to reconcile against.
+Welcome and Lab Leadership use a Feed-view database where each entry is a
+document-style page. Editing always does a full wipe + rewrite because there
+are no named rows to reconcile against.
 
-1. Edit `content/welcome/welcome.md`.
-2. Run `python sync.py --tab welcome`.
+1. Edit the `.md` file in the corresponding `content/` folder.
+2. Run `python sync.py --tab <folder>` (e.g. `--tab welcome` or `--tab lab_leadership`).
 
 ### Sync to Notion
 
@@ -361,8 +372,8 @@ python pull_notion.py --tab technical_onboarding  # pull one tab
 python pull_notion.py --dry-run                    # preview only
 ```
 
-> The pull script preserves each file's YAML frontmatter and replaces only the
-> body section below it.
+> For Feed tabs (Welcome, Lab Leadership), the pull script overwrites the entire
+> `.md` file since those pages have no frontmatter to preserve.
 
 ## Frontmatter reference
 
@@ -389,7 +400,7 @@ This repo is structured to be easily operated by AI coding agents. Key facts:
 
 - **Single entry point:** `python sync.py [options]` - no other scripts needed for CRUD.
 - **Data lives in `.md` files:** All task content and metadata is in `content/<tab>/<category>/*.md`. Agents should read/write these files.
-- **Tab config in `_tab.yaml`:** Each `content/<tab>/_tab.yaml` maps the folder to a Notion data source. Tabs are discovered dynamically - no hardcoded lists in Python.
+- **Tab config in `_tab.yaml` / `_page.yaml`:** Table-view tabs use `_tab.yaml`; Feed-view tabs (Welcome, Lab Leadership) use `_page.yaml`. Both are discovered dynamically - no hardcoded lists in Python.
 - **Frontmatter drives Notion:** Change the frontmatter to change how a task appears in Notion. Change the body to change the task's page content.
 - **Reconciles by default:** Running `sync.py` creates new pages and archives removed ones automatically.
 - **`--delete` for edits:** Body content edits require `--delete` on the tab (Notion API limitation).
@@ -407,15 +418,16 @@ Suggested agent workflow for a content change:
 
 ## Environment variables
 
-| Variable                  | Description                                          |
-|---------------------------|------------------------------------------------------|
-| `NOTION_TOKEN`            | **Notion Internal Integration Token** (secret)       |
-| `HANDBOOK_DATA_SOURCE_ID` | Notion database ID for the Lab Intro tab             |
-| `TECHNICAL_DATA_SOURCE_ID`| Notion database ID for the Technical Onboarding tab  |
-| `TOOLS_DATA_SOURCE_ID`    | Notion database ID for the Tools & Workflows tab     |
-| `FUNDING_DATA_SOURCE_ID`  | Notion database ID for the Funding & Fellowships tab |
-| `PROJECTS_DATA_SOURCE_ID` | Notion database ID for the Projects tab              |
-| `WELCOME_PAGE_ID`         | Notion page ID for the Welcome plain page            |
+| Variable                    | Description                                          |
+|-----------------------------|------------------------------------------------------|
+| `NOTION_TOKEN`              | **Notion Internal Integration Token** (secret)       |
+| `HANDBOOK_DATA_SOURCE_ID`   | Notion database ID for the Lab Intro tab             |
+| `TECHNICAL_DATA_SOURCE_ID`  | Notion database ID for the Technical Onboarding tab  |
+| `TOOLS_DATA_SOURCE_ID`      | Notion database ID for the Tools & Workflows tab     |
+| `FUNDING_DATA_SOURCE_ID`    | Notion database ID for the Funding & Fellowships tab |
+| `PROJECTS_DATA_SOURCE_ID`   | Notion database ID for the Projects tab              |
+| `WELCOME_PAGE_ID`           | Page entry ID for the Welcome Feed tab               |
+| `LAB_LEADERSHIP_PAGE_ID`    | Page entry ID for the Lab Leadership Feed tab        |
 
 > Store these in a `.env` file at the repo root. The `.env` file is gitignored
 > and must **never** be committed.
@@ -427,11 +439,11 @@ All values are stored in the **Environment Variables** spreadsheet in the
 SharePoint folder. Request access from someone with edit permissions if you
 do not have it yet.
 
-**`WELCOME_PAGE_ID` - if setting up a fresh workspace:**
-The value in the spreadsheet is for this lab's Notion workspace. If you are
-configuring a different workspace, find the ID yourself:
+**`WELCOME_PAGE_ID` and `LAB_LEADERSHIP_PAGE_ID` - if setting up a fresh workspace:**
+The values in the spreadsheet are for this lab's Notion workspace. If you are
+configuring a different workspace, find these IDs yourself:
 
-1. Click the **Welcome** tab in Notion.
+1. Click the relevant tab (Welcome or Lab Leadership) in Notion.
 2. **Double-click** the entry inside to open it as a full page.
 3. Copy the UUID after `&p=` in the URL:
    ```
