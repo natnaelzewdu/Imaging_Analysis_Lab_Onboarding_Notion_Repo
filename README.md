@@ -51,10 +51,24 @@ requirements.txt
 
 content/
   lab_intro/                   ← Lab Intro tab
+    _tab.yaml                  ← tab config: label + notion_env_var
+    Lab Culture & Conduct/     ← category subfolder
+      read_lab_handbook.md
+      ...
   technical_onboarding/        ← Technical Onboarding tab
+    _tab.yaml
+    Research Foundations/
+    Computing Environment/
+    ...
   tools/                       ← Tools & Workflows tab
+    _tab.yaml
+    ...
   funding/                     ← Funding & Fellowships tab
+    _tab.yaml
+    ...
   projects/                    ← Projects tab
+    _tab.yaml
+    ...
 
 data/                          ← Raw source files (Word docs, spreadsheets, photos)
 ```
@@ -175,6 +189,41 @@ updated metadata.
 2. Run `python sync.py --tab <folder> --delete` — the old-named page is archived
    and the renamed page is created.
 
+### Rename a category subfolder
+
+Category subfolders are for **local organisation only** — the `category:` key
+in each file's frontmatter is what actually sets the Notion category property.
+Both need to stay in sync.
+
+1. Rename the subfolder (e.g. `Fellowships/` → `Grants and Fellowships/`).
+2. Update `category:` in the frontmatter of every `.md` file inside it.
+3. Run `python sync.py --tab <folder> --delete` — old pages archived, new ones
+   created with the updated category name.
+
+### Rename a tab folder
+
+Tab folders are discovered dynamically via the `_tab.yaml` inside them, so
+renaming a tab folder requires **no code changes**.
+
+1. Rename the folder (e.g. `funding/` → `money/`).
+2. That's it. The `_tab.yaml` inside still points to the correct
+   `notion_env_var`. Run `python sync.py --tab money` as normal.
+
+> To change the **display label** shown in terminal output, edit the `label:`
+> field in `content/<tab>/_tab.yaml`. This does not affect Notion.
+
+### Add a new Notion tab
+
+1. Create a new folder under `content/` (e.g. `content/reading_list/`).
+2. Add a `_tab.yaml` inside it:
+   ```yaml
+   label: "Reading List"
+   notion_env_var: READING_LIST_DATA_SOURCE_ID
+   ```
+3. Add the corresponding env var to `.env` and `config.py`.
+4. Create category subfolders and `.md` files with frontmatter as normal.
+5. Run `python sync.py --tab reading_list`.
+
 ### Sync to Notion
 
 ```bash
@@ -230,9 +279,11 @@ folder without accidentally publishing them.
 This repo is structured to be easily operated by AI coding agents. Key facts:
 
 - **Single entry point:** `python sync.py [options]` — no other scripts needed for CRUD.
-- **Data lives in `.md` files:** All task content and metadata is in `content/<tab>/*.md`. Agents should read/write these files.
+- **Data lives in `.md` files:** All task content and metadata is in `content/<tab>/<category>/*.md`. Agents should read/write these files.
+- **Tab config in `_tab.yaml`:** Each `content/<tab>/_tab.yaml` maps the folder to a Notion data source. Tabs are discovered dynamically — no hardcoded lists in Python.
 - **Frontmatter drives Notion:** Change the frontmatter to change how a task appears in Notion. Change the body to change the task's page content.
-- **Idempotent by default:** Running `sync.py` without `--delete` never overwrites existing Notion pages.
+- **Reconciles by default:** Running `sync.py` creates new pages and archives removed ones automatically.
+- **`--delete` for edits:** Body content edits require `--delete` on the tab (Notion API limitation).
 - **Tab mapping:** see the table in [How it works](#how-it-works).
 - **No Python editing needed** for ordinary CRUD — only `.md` files.
 
