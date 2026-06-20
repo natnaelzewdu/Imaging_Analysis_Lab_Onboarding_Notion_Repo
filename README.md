@@ -180,8 +180,7 @@ updated metadata.
 ### Move a task to a different category
 
 1. Move the `.md` file to `content/<tab>/<NewCategory>/` (create the folder if needed).
-2. Update the `category` frontmatter key to match the new folder name.
-3. Run `python sync.py --tab <folder> --delete` to re-publish with the new category.
+2. Run `python sync.py --tab <folder> --delete` to re-publish with the new category.
 
 ### Rename a task
 
