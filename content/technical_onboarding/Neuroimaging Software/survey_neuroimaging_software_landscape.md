@@ -1,7 +1,6 @@
 ---
 task_name: "Survey the Neuroimaging Software Landscape"
 emoji: "🗺️"
-category: Neuroimaging Software
 tier: Theory
 order: 1
 url: "https://andysbrainbook.readthedocs.io/en/latest/"

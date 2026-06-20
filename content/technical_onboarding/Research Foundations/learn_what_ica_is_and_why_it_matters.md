@@ -1,7 +1,6 @@
 ---
 task_name: "Learn What ICA Is and Why It Matters"
 emoji: "📊"
-category: Research Foundations
 tier: Theory
 order: 3
 url: "https://doi.org/10.1016/j.neuroimage.2008.10.057"

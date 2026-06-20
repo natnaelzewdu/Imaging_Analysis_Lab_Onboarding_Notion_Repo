@@ -1,7 +1,6 @@
 ---
 task_name: "Interpret Functional Network Connectivity (FNC) Matrices"
 emoji: "📊"
-category: Research Foundations
 tier: Theory
 order: 8
 url: "https://doi.org/10.1093/cercor/bhs261"

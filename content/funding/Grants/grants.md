@@ -1,7 +1,6 @@
 ---
 task_name: Grants Overview
 emoji: "💰"
-category: Grants
 tier: Theory
 order: 1
 ---

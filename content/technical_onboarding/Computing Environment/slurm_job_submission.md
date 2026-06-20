@@ -1,7 +1,6 @@
 ---
 task_name: "SLURM Job Submission"
 emoji: "📜"
-category: Computing Environment
 tier: Hands-On
 order: 4
 url: "https://trendscenter.github.io/wiki/docs/SLURM_overview.html"

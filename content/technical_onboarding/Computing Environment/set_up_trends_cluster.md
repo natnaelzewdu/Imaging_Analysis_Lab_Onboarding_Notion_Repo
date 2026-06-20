@@ -1,7 +1,6 @@
 ---
 task_name: "Set Up and Review TReNDS Computing Cluster"
 emoji: "🖥️"
-category: Computing Environment
 tier: Hands-On
 order: 1
 url: "https://trendscenter.github.io/wiki/docs/Getting_Started.html"

@@ -1,7 +1,6 @@
 ---
 task_name: "Practice Reproducibility and Open Science"
 emoji: "🔬"
-category: Writing & Publishing
 tier: Theory
 order: 2
 url: "https://osf.io/"

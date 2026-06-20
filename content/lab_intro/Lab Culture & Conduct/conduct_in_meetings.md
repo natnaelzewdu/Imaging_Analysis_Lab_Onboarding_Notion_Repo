@@ -1,7 +1,6 @@
 ---
 task_name: Conduct in Meetings
 emoji: "🗣️"
-category: Lab Culture & Conduct
 tier: Theory
 order: 2
 ---

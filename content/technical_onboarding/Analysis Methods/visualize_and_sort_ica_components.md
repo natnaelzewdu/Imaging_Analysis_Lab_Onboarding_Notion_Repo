@@ -1,7 +1,6 @@
 ---
 task_name: "Visualize & Sort ICA Components"
 emoji: "👁️"
-category: Analysis Methods
 tier: Hands-On
 order: 3
 url: "https://trendscenter.org/software/gift/"

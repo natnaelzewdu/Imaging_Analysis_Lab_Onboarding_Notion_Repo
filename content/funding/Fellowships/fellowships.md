@@ -1,7 +1,6 @@
 ---
 task_name: Fellowships Overview
 emoji: "🎓"
-category: Fellowships
 tier: Theory
 order: 1
 ---

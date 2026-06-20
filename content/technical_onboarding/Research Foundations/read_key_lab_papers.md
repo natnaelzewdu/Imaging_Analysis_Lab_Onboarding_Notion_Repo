@@ -1,7 +1,6 @@
 ---
 task_name: "Read Key Lab Papers"
 emoji: "📚"
-category: Research Foundations
 tier: Theory
 order: 6
 url: "https://scholar.google.com/citations?user=e35VA6sAAAAJ&hl=en&sortby=pubdate"

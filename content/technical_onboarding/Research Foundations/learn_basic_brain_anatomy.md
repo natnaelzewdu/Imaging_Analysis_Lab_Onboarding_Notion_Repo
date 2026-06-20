@@ -1,7 +1,6 @@
 ---
 task_name: "Learn Basic Brain Anatomy for Neuroimaging"
 emoji: "🧠"
-category: Research Foundations
 tier: Theory
 order: 2
 url: "https://neurosynth.org/"

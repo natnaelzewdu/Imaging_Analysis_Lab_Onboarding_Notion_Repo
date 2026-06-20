@@ -1,7 +1,6 @@
 ---
 task_name: "Debug and Troubleshoot ICA Analyses"
 emoji: "🔍"
-category: Analysis Methods
 tier: Hands-On
 order: 5
 url: "https://trendscenter.org/software/gift/"

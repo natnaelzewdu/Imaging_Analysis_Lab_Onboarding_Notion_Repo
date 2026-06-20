@@ -1,7 +1,6 @@
 ---
 task_name: "MATLAB Fundamentals"
 emoji: "📐"
-category: Computing Environment
 tier: Hands-On
 order: 5
 url: "https://matlabacademy.mathworks.com/"

@@ -1,7 +1,6 @@
 ---
 task_name: "Understand Why fMRI Preprocessing Matters"
 emoji: "🔧"
-category: Research Foundations
 tier: Theory
 order: 9
 url: "https://andysbrainbook.readthedocs.io/en/latest/fMRI_Short_Course/fMRI_04_Preprocessing.html"

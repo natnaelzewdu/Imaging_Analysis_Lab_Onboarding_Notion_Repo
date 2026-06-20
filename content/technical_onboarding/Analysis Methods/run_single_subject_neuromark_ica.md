@@ -1,7 +1,6 @@
 ---
 task_name: "Run Single-Subject Neuromark ICA on Cluster"
 emoji: "🏃"
-category: Analysis Methods
 tier: Hands-On
 order: 6
 url: "https://github.com/trendscenter/ClusterWorkshop"

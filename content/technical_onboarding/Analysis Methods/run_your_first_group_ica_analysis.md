@@ -1,7 +1,6 @@
 ---
 task_name: "Run Your First Group ICA Analysis"
 emoji: "🧪"
-category: Analysis Methods
 tier: Hands-On
 order: 2
 url: "https://trendscenter.org/software/gift/"

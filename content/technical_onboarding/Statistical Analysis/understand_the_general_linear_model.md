@@ -1,7 +1,6 @@
 ---
 task_name: "Understand the General Linear Model (GLM)"
 emoji: "📐"
-category: Statistical Analysis
 tier: Theory
 order: 1
 url: "https://www.youtube.com/watch?v=gRhM04LfA2E"

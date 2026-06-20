@@ -1,7 +1,6 @@
 ---
 task_name: "Identify and Label Brain Networks"
 emoji: "🧩"
-category: Research Foundations
 tier: Theory
 order: 12
 url: "https://doi.org/10.1002/hbm.24580"

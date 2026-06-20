@@ -1,7 +1,6 @@
 ---
 task_name: "Understand Group ICA for Multi-Subject Studies"
 emoji: "👥"
-category: Research Foundations
 tier: Theory
 order: 4
 url: "https://doi.org/10.1002/hbm.1048"

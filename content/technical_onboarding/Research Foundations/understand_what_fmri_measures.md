@@ -1,7 +1,6 @@
 ---
 task_name: "Understand What fMRI Measures"
 emoji: "🧲"
-category: Research Foundations
 tier: Theory
 order: 1
 url: "https://www.youtube.com/watch?v=djAxjtN_7VE"

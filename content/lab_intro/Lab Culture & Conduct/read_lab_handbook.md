@@ -1,7 +1,6 @@
 ---
 task_name: Read the Lab Handbook
 emoji: "📖"
-category: Lab Culture & Conduct
 tier: Theory
 order: 1
 ---

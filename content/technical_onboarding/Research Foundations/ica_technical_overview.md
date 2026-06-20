@@ -1,7 +1,6 @@
 ---
 task_name: "Learn Independent Component Analysis (ICA)"
 emoji: "🧠"
-category: Research Foundations
 tier: Theory
 order: 11
 url: "https://doi.org/10.1016/j.neuroimage.2008.10.057"

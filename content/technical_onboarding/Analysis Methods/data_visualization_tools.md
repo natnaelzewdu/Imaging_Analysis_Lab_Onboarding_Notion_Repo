@@ -1,7 +1,6 @@
 ---
 task_name: "Learn Data Visualization Tools"
 emoji: "📊"
-category: Analysis Methods
 tier: Hands-On
 order: 4
 url: "https://doi.org/10.1016/j.neuron.2012.05.001"

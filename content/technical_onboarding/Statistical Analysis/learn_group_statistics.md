@@ -1,7 +1,6 @@
 ---
 task_name: "Learn Group Statistics (t-tests, ANOVA)"
 emoji: "📈"
-category: Statistical Analysis
 tier: Theory
 order: 2
 url: "https://www.youtube.com/watch?v=0Nc1NyBmUPU"

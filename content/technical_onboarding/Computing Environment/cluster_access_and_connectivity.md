@@ -1,7 +1,6 @@
 ---
 task_name: "Cluster Access & Connectivity"
 emoji: "🔑"
-category: Computing Environment
 tier: Hands-On
 order: 2
 url: "https://trendscenter.github.io/wiki/docs/Getting_Started.html"

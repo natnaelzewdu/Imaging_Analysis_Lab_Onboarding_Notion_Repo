@@ -1,7 +1,6 @@
 ---
 task_name: "Understand Statistics for Neuroimaging"
 emoji: "⚠️"
-category: Statistical Analysis
 tier: Theory
 order: 3
 url: "https://doi.org/10.1073/pnas.1602413113"

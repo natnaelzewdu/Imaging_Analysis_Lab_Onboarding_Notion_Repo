@@ -1,7 +1,6 @@
 ---
 task_name: "Capstone: Schizophrenia vs Controls Analysis"
 emoji: "🎓"
-category: Capstone Project
 tier: Hands-On
 order: 1
 url: "https://openneuro.org/datasets/ds000030"

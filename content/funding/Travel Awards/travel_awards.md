@@ -1,7 +1,6 @@
 ---
 task_name: Travel Awards Overview
 emoji: "✈️"
-category: Travel Awards
 tier: Theory
 order: 1
 ---

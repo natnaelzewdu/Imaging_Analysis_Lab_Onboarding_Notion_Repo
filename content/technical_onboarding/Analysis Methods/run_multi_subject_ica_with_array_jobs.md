@@ -1,7 +1,6 @@
 ---
 task_name: "Run Multi-Subject ICA with Array Jobs"
 emoji: "👥"
-category: Analysis Methods
 tier: Hands-On
 order: 7
 url: "https://github.com/trendscenter/ClusterWorkshop"

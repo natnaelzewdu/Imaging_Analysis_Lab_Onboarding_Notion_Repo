@@ -1,7 +1,6 @@
 ---
 task_name: "Install & Launch GIFT Toolbox"
 emoji: "🧰"
-category: Analysis Methods
 tier: Hands-On
 order: 1
 url: "https://trendscenter.org/software/gift/"

@@ -1,8 +1,8 @@
-# Notion Onboarding — Imaging-Analysis Lab
+# Notion Onboarding: Imaging-Analysis Lab
 
 Programmatically manages onboarding content in Notion for the **Imaging-Analysis Lab (TReNDS Center, GSU)**.
 
-All task content lives in plain Markdown files. A single command syncs everything to Notion — no Python editing required to add, edit, or remove tasks.
+All task content lives in plain Markdown files. A single command syncs everything to Notion. No Python editing required to add, edit, or remove tasks.
 
 ---
 
@@ -35,7 +35,7 @@ Each Notion tab corresponds to a folder under `content/`:
 | Funding & Fellowships| `content/funding/`                  | `FUNDING_DATA_SOURCE_ID`   |
 | Projects             | `content/projects/`                 | `PROJECTS_DATA_SOURCE_ID`  |
 
-Every `.md` file with a YAML frontmatter block (see below) is treated as one Notion task page. Files without frontmatter are ignored by the sync script.
+Every `.md` file with a YAML frontmatter block (see the [Frontmatter reference](#frontmatter-reference) section) is treated as one Notion task page. Files without frontmatter are ignored by the sync script.
 
 ---
 
@@ -43,7 +43,7 @@ Every `.md` file with a YAML frontmatter block (see below) is treated as one Not
 
 ```
 .env.example                   ← copy to .env and fill in your tokens
-sync.py                        ← THE entry point — syncs .md files → Notion
+sync.py                        ← THE entry point - syncs .md files → Notion
 pull_notion.py                 ← pull Notion content back to .md files
 config.py                      ← loads env vars (do not edit)
 notion_api.py                  ← Notion API helpers (do not edit)
@@ -108,7 +108,7 @@ Copy `.env.example` to `.env` and fill in each value:
 cp .env.example .env
 ```
 
-> **Important — Notion Personal Access Token:**
+> **Important - Notion Personal Access Token:**
 > `NOTION_TOKEN` must be a Notion **Internal Integration Token** with read/write
 > access to each database listed in the env file.
 >
@@ -124,7 +124,7 @@ URL: `notion.so/<workspace>/<**THIS-UUID**>?v=...`
 
 ## Everyday workflows
 
-The **`.md` file is the source of truth**. Edit the file, run `sync.py`, and Notion reflects the change. The sync is a **reconcile by default** — it compares local files against Notion and:
+The **`.md` file is the source of truth**. Edit the file, run `sync.py`, and Notion reflects the change. The sync **reconciles by default** - it compares local files against Notion and:
 
 - Creates pages that exist locally but not in Notion
 - Archives pages that exist in Notion but no longer have a local file
@@ -133,15 +133,14 @@ The **`.md` file is the source of truth**. Edit the file, run `sync.py`, and Not
 ### Add a new task
 
 1. Create a new `.md` file in the appropriate `content/<tab>/<category>/` folder.  
-   Name it descriptively: `understand_bold_signal.md` — no number prefix needed.
+   Name it descriptively: `understand_bold_signal.md` (no number prefix needed).
 
-2. Add YAML frontmatter at the top:
+2. Add YAML frontmatter at the top (see [Frontmatter reference](#frontmatter-reference) for all keys):
 
    ```markdown
    ---
    task_name: "Understand the BOLD Signal"
    emoji: "🧲"
-   category: Research Foundations
    tier: Theory
    order: 13
    url: "https://example.com/resource"
@@ -157,7 +156,7 @@ The **`.md` file is the source of truth**. Edit the file, run `sync.py`, and Not
 
 **Body content changed** (the Markdown below the frontmatter):
 
-Notion's API does not support in-place block updates — the page must be
+Notion's API does not support in-place block updates - the page must be
 archived and recreated. Run:
 
 ```bash
@@ -166,7 +165,7 @@ python sync.py --tab <folder> --delete
 
 **Frontmatter only changed** (task name, emoji, category, tier, order, url):
 
-Same as above — use `--delete` to wipe the old page and recreate it with the
+Same as above - use `--delete` to wipe the old page and recreate it with the
 updated metadata.
 
 > **Tip:** `--delete` only affects the one tab you specify. Other tabs are untouched.
@@ -174,7 +173,7 @@ updated metadata.
 ### Delete a task
 
 1. Delete the `.md` file (or rename it without a `task_name` frontmatter key).
-2. Run `python sync.py` — the sync automatically detects the removed file and
+2. Run `python sync.py` - the sync automatically detects the removed file and
    archives the corresponding Notion page.
 
 ### Move a task to a different category
@@ -185,17 +184,17 @@ updated metadata.
 ### Rename a task
 
 1. Update `task_name` in the frontmatter.
-2. Run `python sync.py --tab <folder> --delete` — the old-named page is archived
+2. Run `python sync.py --tab <folder> --delete` - the old-named page is archived
    and the renamed page is created.
 
 ### Rename a category subfolder
 
-The **subfolder name is the category** — `sync.py` derives the Notion
+The **subfolder name is the category** - `sync.py` derives the Notion
 `Category` property directly from the parent folder name, ignoring any
 `category:` key in the frontmatter.  Renaming a folder is all you need.
 
 1. Rename the subfolder (e.g. `Fellowships/` → `Grants and Fellowships/`).
-2. Run `python sync.py --tab <folder> --delete` — old pages archived, new ones
+2. Run `python sync.py --tab <folder> --delete` - old pages archived, new ones
    created with the updated category name.
 
 No file edits required.
@@ -227,7 +226,7 @@ renaming a tab folder requires **no code changes**.
 ### Sync to Notion
 
 ```bash
-# Reconcile all tabs (create new + archive removed — safe to run anytime)
+# Reconcile all tabs (create new + archive removed - safe to run anytime)
 python sync.py
 
 # Reconcile one tab only
@@ -259,14 +258,35 @@ python pull_notion.py --dry-run                    # preview only
 
 ## Frontmatter reference
 
+**What is frontmatter?**
+Frontmatter is a short block of structured metadata placed at the very top of a Markdown file, fenced by `---` lines. It tells `sync.py` how to create the Notion page (title, icon, ordering, etc.) without mixing that information into the readable content below. If you have used Jekyll, Hugo, or any static site generator you have seen this pattern before.
+
+Official YAML spec (the format used inside the `---` block): https://yaml.org/spec/1.2.2/
+
+Example:
+
+```markdown
+---
+task_name: "Understand What fMRI Measures"
+emoji: "🧲"
+tier: Theory
+order: 1
+url: "https://example.com"
+---
+
+## Body content starts here...
+```
+
 | Key         | Required | Description                                           |
-|-------------|----------|-------------------------------------------------------|
+|-------------|----------|---------------------------------------------------------|
 | `task_name` | **Yes**  | Exact title shown in Notion                           |
 | `emoji`     | No       | Page icon (default: `📌`)                             |
-| `category`  | No       | Fallback if file is at tab root (no subfolder). **For files inside a category subfolder the folder name is used automatically — this key is ignored.** |
 | `tier`      | No       | `Theory` or `Hands-On`                                |
-| `order`     | No       | Integer — controls sort order within a category       |
+| `order`     | No       | Integer, controls sort order within a category        |
 | `url`       | No       | Reference link shown in Notion                        |
+
+> **Category is set by the folder name**, not a frontmatter key. Place the file
+> in `content/<tab>/<Category Name>/` and sync. No `category:` key needed.
 
 Files without a `task_name` key are silently skipped by `sync.py` and
 `pull_notion.py`. This lets you keep notes or archived content in the same
@@ -278,14 +298,14 @@ folder without accidentally publishing them.
 
 This repo is structured to be easily operated by AI coding agents. Key facts:
 
-- **Single entry point:** `python sync.py [options]` — no other scripts needed for CRUD.
+- **Single entry point:** `python sync.py [options]` - no other scripts needed for CRUD.
 - **Data lives in `.md` files:** All task content and metadata is in `content/<tab>/<category>/*.md`. Agents should read/write these files.
-- **Tab config in `_tab.yaml`:** Each `content/<tab>/_tab.yaml` maps the folder to a Notion data source. Tabs are discovered dynamically — no hardcoded lists in Python.
+- **Tab config in `_tab.yaml`:** Each `content/<tab>/_tab.yaml` maps the folder to a Notion data source. Tabs are discovered dynamically - no hardcoded lists in Python.
 - **Frontmatter drives Notion:** Change the frontmatter to change how a task appears in Notion. Change the body to change the task's page content.
 - **Reconciles by default:** Running `sync.py` creates new pages and archives removed ones automatically.
 - **`--delete` for edits:** Body content edits require `--delete` on the tab (Notion API limitation).
 - **Tab mapping:** see the table in [How it works](#how-it-works).
-- **No Python editing needed** for ordinary CRUD — only `.md` files.
+- **No Python editing needed** for ordinary CRUD - only `.md` files.
 
 Suggested agent workflow for a content change:
 1. Read the relevant `.md` file(s) in `content/<tab>/<category>/`.
@@ -301,7 +321,7 @@ Suggested agent workflow for a content change:
 | Variable                  | Description                                          |
 |---------------------------|------------------------------------------------------|
 | `NOTION_TOKEN`            | **Notion Internal Integration Token** (secret)       |
-| `NOTION_DATABASE_ID`      | Legacy — kept for backwards compatibility            |
+| `NOTION_DATABASE_ID`      | Legacy, kept for backwards compatibility             |
 | `HANDBOOK_DATA_SOURCE_ID` | Notion database ID for the Lab Intro tab             |
 | `TECHNICAL_DATA_SOURCE_ID`| Notion database ID for the Technical Onboarding tab  |
 | `TOOLS_DATA_SOURCE_ID`    | Notion database ID for the Tools & Workflows tab     |
@@ -310,3 +330,4 @@ Suggested agent workflow for a content change:
 
 > Store these in a `.env` file at the repo root. The `.env` file is gitignored
 > and must **never** be committed.
+

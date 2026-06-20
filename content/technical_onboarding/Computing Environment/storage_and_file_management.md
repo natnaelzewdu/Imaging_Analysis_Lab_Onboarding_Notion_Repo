@@ -1,7 +1,6 @@
 ---
 task_name: "Storage & File Management"
 emoji: "📂"
-category: Computing Environment
 tier: Hands-On
 order: 3
 url: "https://trendscenter.github.io/wiki/docs/Storage_guide.html"

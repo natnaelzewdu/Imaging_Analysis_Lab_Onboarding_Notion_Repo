@@ -1,7 +1,6 @@
 ---
 task_name: VS Code for Remote Development
 emoji: "💻"
-category: Version Control & Coding Tools
 tier: Hands-On
 order: 2
 url: "https://code.visualstudio.com/docs/remote/ssh"

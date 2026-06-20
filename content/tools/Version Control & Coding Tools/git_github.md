@@ -1,7 +1,6 @@
 ---
 task_name: Git & GitHub Basics
 emoji: "🔀"
-category: Version Control & Coding Tools
 tier: Hands-On
 order: 1
 url: "https://github.com/trendscenter"

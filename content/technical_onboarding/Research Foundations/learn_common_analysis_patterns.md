@@ -1,7 +1,6 @@
 ---
 task_name: "Learn Common Analysis Patterns in the Lab"
 emoji: "🔬"
-category: Research Foundations
 tier: Theory
 order: 7
 url: "https://trendscenter.org/software/gift/"

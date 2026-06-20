@@ -1,7 +1,6 @@
 ---
 task_name: "Learn Quality Control for fMRI Data"
 emoji: "✅"
-category: Research Foundations
 tier: Theory
 order: 10
 url: "https://mriqc.readthedocs.io/en/latest/"

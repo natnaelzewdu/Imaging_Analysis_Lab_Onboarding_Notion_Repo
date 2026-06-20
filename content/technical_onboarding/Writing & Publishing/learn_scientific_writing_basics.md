@@ -1,7 +1,6 @@
 ---
 task_name: "Learn Scientific Writing Basics"
 emoji: "✍️"
-category: Writing & Publishing
 tier: Theory
 order: 1
 url: "https://www.youtube.com/watch?v=UY7sVKJPTMA"
