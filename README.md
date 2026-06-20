@@ -51,6 +51,7 @@ Each Notion tab corresponds to a folder under `content/`:
 
 | Notion tab           | Local folder                        | Env var                    |
 |----------------------|-------------------------------------|----------------------------|
+| Welcome              | `content/welcome/`                  | `WELCOME_PAGE_ID`          |
 | Lab Intro            | `content/lab_intro/`                | `HANDBOOK_DATA_SOURCE_ID`  |
 | Technical Onboarding | `content/technical_onboarding/`     | `TECHNICAL_DATA_SOURCE_ID` |
 | Tools & Workflows    | `content/tools/`                    | `TOOLS_DATA_SOURCE_ID`     |
@@ -146,17 +147,15 @@ Copy `.env.example` to `.env` and fill in each value:
 cp .env.example .env
 ```
 
-> **Important - Notion Personal Access Token:**
-> `NOTION_TOKEN` must be a Notion **Internal Integration Token** with read/write
-> access to each database listed in the env file.
+> **Where to get the values:**
+> All tokens and IDs are stored in the **Environment Variables** spreadsheet
+> inside the Onboarding Resources folder on SharePoint.
 >
-> To create one: Notion → Settings → Integrations → Create new integration.
-> Then share each database with the integration via the database's "Connect to"
-> menu.
-
-The `*_DATA_SOURCE_ID` values are the IDs of the Notion databases backing each
-tab. Find them by opening the database in Notion and copying the UUID from the
-URL: `notion.so/<workspace>/<**THIS-UUID**>?v=...`
+> [Request access to Onboarding Resources](https://studentgsu-my.sharepoint.com/:f:/r/personal/nalemayehu3_student_gsu_edu/Documents/Onboarding%20Resources?csf=1&web=1&e=dvr9zc)
+>
+> You must be added to the folder by someone who already has edit access before
+> you can view the spreadsheet. Once you have access, open the
+> **Environment Variables** file and copy each value into your `.env`.
 
 ---
 
@@ -368,7 +367,28 @@ Suggested agent workflow for a content change:
 | `TOOLS_DATA_SOURCE_ID`    | Notion database ID for the Tools & Workflows tab     |
 | `FUNDING_DATA_SOURCE_ID`  | Notion database ID for the Funding & Fellowships tab |
 | `PROJECTS_DATA_SOURCE_ID` | Notion database ID for the Projects tab              |
+| `WELCOME_PAGE_ID`         | Notion page ID for the Welcome plain page            |
 
 > Store these in a `.env` file at the repo root. The `.env` file is gitignored
 > and must **never** be committed.
+
+### How to find each ID
+
+**All values except `WELCOME_PAGE_ID`** come from the **Environment Variables**
+spreadsheet in the [Onboarding Resources](https://studentgsu-my.sharepoint.com/:f:/r/personal/nalemayehu3_student_gsu_edu/Documents/Onboarding%20Resources?csf=1&web=1&e=dvr9zc)
+SharePoint folder. You must be granted access to that folder first - ask
+someone with edit permissions to add you.
+
+**`WELCOME_PAGE_ID`** is not in the spreadsheet because it is specific to how
+the Welcome content is structured. Find it yourself:
+
+1. Click the **Welcome** tab in Notion.
+2. **Double-click** the entry inside to open it as a full page.
+3. Look at the URL bar - it will contain `&p=` followed by a UUID:
+   ```
+   notion.so/...?v=...&p=3550d69bb5ad80ccabb5f1f9feca76c7&pm=c
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                          copy this UUID as WELCOME_PAGE_ID
+   ```
+4. Add it to your `.env`: `WELCOME_PAGE_ID=<that-uuid>`
 
