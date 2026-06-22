@@ -19,4 +19,4 @@ LAB_LEADERSHIP_PAGE_ID = os.environ.get("LAB_LEADERSHIP_PAGE_ID", "")
 NOTION_API_VERSION = "2026-03-11"
 NOTION_BASE_URL = "https://api.notion.com/v1"
 REQUEST_TIMEOUT = 120
-RATE_LIMIT_DELAY = 0.5
+RATE_LIMIT_DELAY = 0.35  # Notion allows ~3 req/s; 0.35s is safe

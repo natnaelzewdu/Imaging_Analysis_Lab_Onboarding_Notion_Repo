@@ -7,23 +7,34 @@ no code changes needed.
 Task metadata lives in YAML frontmatter at the top of each .md file.
 Files without a 'task_name' frontmatter key are ignored.
 
+LOCAL IS ALWAYS THE SOURCE OF TRUTH.
+Running sync.py pushes local changes to Notion.
+To pull Notion changes back to local files, use pull_notion.py.
+
 Usage:
-    python sync.py                          # Reconcile all tabs
-    python sync.py --tab technical_onboarding  # Reconcile one tab
-    python sync.py --delete                 # Full wipe + re-sync (use after editing body content)
-    python sync.py --dry-run                # Preview without writing to Notion
-    python sync.py --status                 # Show local task counts per tab
+    python sync.py                              # Sync all tabs and pages
+    python sync.py --tab <folder>               # Sync one tab or page
+    python sync.py --category <name>            # Sync all tasks in a category
+    python sync.py --task <filename.md>         # Sync one specific task file
+    python sync.py --dry-run                    # Preview without writing to Notion
+    python sync.py --status                     # Show local task inventory
+
+    python pull_notion.py                       # Pull Notion content to local files
+    python pull_notion.py --tab <folder>        # Pull one tab
 
 Frontmatter keys (all optional except task_name):
     task_name  : (required) Exact title shown in Notion
     emoji      : Page icon  (default: 📌)
-    category   : Select property value — should match the subfolder name
-    tier       : Select property value  (Theory | Hands-On)
-    order      : Number property for sorting within a category
-    url        : URL property
+    tier       : Theory | Hands-On
+    order      : Integer — controls sort order within a category
+    url        : Reference link shown in Notion
+
+Category is derived from the parent subfolder name, not from frontmatter.
 """
 
 import argparse
+import hashlib
+import json
 import os
 import sys
 
@@ -43,6 +54,27 @@ from notion_api import (
 )
 
 CONTENT_ROOT = os.path.join(os.path.dirname(__file__), "content")
+CACHE_FILE = os.path.join(os.path.dirname(__file__), ".sync_cache.json")
+
+
+# ---------------------------------------------------------------------------
+# Content hash cache — skip tasks whose body hasn't changed since last sync
+# ---------------------------------------------------------------------------
+
+def _load_cache() -> dict[str, str]:
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def _save_cache(cache: dict[str, str]) -> None:
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2)
+
+
+def _body_hash(body: str) -> str:
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +310,7 @@ def sync_tab(
     existing = query_data_source(data_source_id)
 
     if delete_first:
-        # Full wipe then recreate everything
+        # Full wipe then recreate everything (also resets Status on all tasks)
         if existing:
             print(f"  Archiving {len(existing)} existing page(s)...")
             for name, page_id in existing.items():
@@ -293,23 +325,45 @@ def sync_tab(
             for name, page_id in orphans.items():
                 print(f"    🗑  {name}")
                 archive_page(page_id)
-                del existing[name]  # type: ignore[attr-defined]
             existing = {k: v for k, v in existing.items() if k not in orphans}
 
     if not tasks:
         print("  No publishable tasks found (files need YAML frontmatter with task_name).")
         return
 
+    cache = _load_cache()
+    cache_updated = False
+
     to_create = [t for t in tasks if t["task_name"] not in existing]
-    skipped = len(tasks) - len(to_create)
-    if skipped:
-        print(f"  Skipping {skipped} already-existing task(s).")
+    to_update = [
+        t for t in tasks
+        if t["task_name"] in existing
+        and _body_hash(t.get("_body", "")) != cache.get(t["task_name"])
+    ]
+    unchanged = len(tasks) - len(to_create) - len(to_update)
+
+    # Update body content for tasks whose content has changed
+    if to_update:
+        print(f"  Updating body content for {len(to_update)} changed task(s)...\n")
+        for task in to_update:
+            name = task["task_name"]
+            page_id = existing[name]
+            print(f"    ✏  {name}")
+            clear_page_blocks(page_id)
+            if task.get("_body", "").strip():
+                append_body_content(page_id, task["_body"])
+            cache[name] = _body_hash(task.get("_body", ""))
+            cache_updated = True
+    elif unchanged:
+        print(f"  {unchanged} task(s) unchanged — skipped.")
 
     if not to_create:
-        print("  Nothing to do — all tasks already exist in Notion.")
+        if cache_updated:
+            _save_cache(cache)
+        print(f"\n  ✓ Done ({len(to_update)} updated, 0 created).")
         return
 
-    print(f"  Creating {len(to_create)} task(s)...\n")
+    print(f"\n  Creating {len(to_create)} new task(s)...\n")
     for i, task in enumerate(to_create, 1):
         emoji = task.get("emoji", "📌")
         name = task["task_name"]
@@ -325,8 +379,144 @@ def sync_tab(
         )
         if page_id and task.get("_body", "").strip():
             append_body_content(page_id, task["_body"])
+            cache[name] = _body_hash(task.get("_body", ""))
+            cache_updated = True
 
-    print(f"\n  ✓ Done ({len(to_create)} created).")
+    if cache_updated:
+        _save_cache(cache)
+    print(f"\n  ✓ Done ({len(to_update)} updated, {len(to_create)} created).")
+
+
+# ---------------------------------------------------------------------------
+# Targeted sync helpers
+# ---------------------------------------------------------------------------
+
+def find_task_file(filename: str) -> str | None:
+    """Search all content/ subdirectories for a .md file by filename."""
+    for root, _dirs, files in os.walk(CONTENT_ROOT):
+        if filename in files:
+            return os.path.join(root, filename)
+    return None
+
+
+def sync_single_task(filepath: str, dry_run: bool = False) -> None:
+    """Sync one specific .md file to its Notion page."""
+    meta, body = parse_md(filepath)
+    if not meta or not meta.get("task_name"):
+        print(f"  No task_name frontmatter found in {filepath}")
+        return
+
+    # Determine which tab this file belongs to
+    rel = os.path.relpath(filepath, CONTENT_ROOT)
+    tab_key = rel.split(os.sep)[0]
+
+    # Derive category from parent folder
+    parent = os.path.basename(os.path.dirname(filepath))
+    tab_dir = os.path.join(CONTENT_ROOT, tab_key)
+    if os.path.dirname(filepath) != tab_dir:
+        meta["category"] = parent
+
+    tabs = discover_tabs()
+    if tab_key not in tabs:
+        print(f"  Tab '{tab_key}' not found in _tab.yaml discovery.")
+        return
+
+    data_source_id = tabs[tab_key]["data_source_id"]
+    task_name = meta["task_name"]
+
+    print(f"\n  Syncing task: {task_name}  [{tab_key}]")
+
+    if dry_run:
+        print(f"  [DRY RUN] Would update '{task_name}' in {tab_key}.")
+        return
+
+    ensure_database_properties(data_source_id)
+    existing = query_data_source(data_source_id)
+
+    if task_name in existing:
+        page_id = existing[task_name]
+        print(f"  Updating body content...")
+        clear_page_blocks(page_id)
+        if body.strip():
+            append_body_content(page_id, body)
+    else:
+        print(f"  Creating new task...")
+        page_id = create_page(
+            data_source_id, task_name,
+            emoji=meta.get("emoji", "📌"),
+            url=meta.get("url"),
+            category=meta.get("category"),
+            tier=meta.get("tier"),
+            order=meta.get("order"),
+        )
+        if page_id and body.strip():
+            append_body_content(page_id, body)
+
+    print(f"  ✓ Done.")
+
+
+def sync_category(category_name: str, dry_run: bool = False) -> None:
+    """Sync all tasks belonging to a category subfolder across all tabs."""
+    tabs = discover_tabs()
+    matched: list[tuple[str, str, dict]] = []  # (tab_key, filepath, meta)
+
+    for tab_key in tabs:
+        cat_dir = os.path.join(CONTENT_ROOT, tab_key, category_name)
+        if not os.path.isdir(cat_dir):
+            continue
+        for fname in sorted(os.listdir(cat_dir)):
+            if not fname.endswith(".md"):
+                continue
+            fpath = os.path.join(cat_dir, fname)
+            meta, _ = parse_md(fpath)
+            if meta and meta.get("task_name"):
+                matched.append((tab_key, fpath, meta))
+
+    if not matched:
+        print(f"  No tasks found in category '{category_name}'.")
+        return
+
+    print(f"\n  Syncing category '{category_name}' ({len(matched)} task(s))...")
+
+    if dry_run:
+        for tab_key, fpath, meta in matched:
+            print(f"    [DRY RUN] {meta['task_name']}  [{tab_key}]")
+        return
+
+    # Group by tab to minimise API calls
+    from collections import defaultdict
+    by_tab: dict[str, list] = defaultdict(list)
+    for tab_key, fpath, meta in matched:
+        by_tab[tab_key].append((fpath, meta))
+
+    for tab_key, items in by_tab.items():
+        data_source_id = tabs[tab_key]["data_source_id"]
+        ensure_database_properties(data_source_id)
+        existing = query_data_source(data_source_id)
+        for fpath, meta in items:
+            task_name = meta["task_name"]
+            meta["category"] = category_name
+            _, body = parse_md(fpath)
+            if task_name in existing:
+                page_id = existing[task_name]
+                print(f"    ✏  {task_name}")
+                clear_page_blocks(page_id)
+                if body.strip():
+                    append_body_content(page_id, body)
+            else:
+                print(f"    ➕  {task_name}")
+                page_id = create_page(
+                    data_source_id, task_name,
+                    emoji=meta.get("emoji", "📌"),
+                    url=meta.get("url"),
+                    category=category_name,
+                    tier=meta.get("tier"),
+                    order=meta.get("order"),
+                )
+                if page_id and body.strip():
+                    append_body_content(page_id, body)
+
+    print(f"  ✓ Done.")
 
 
 # ---------------------------------------------------------------------------
@@ -362,66 +552,79 @@ def show_status() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Sync Notion onboarding content from local .md files.",
+        description="Push local .md content to Notion. Local is always the source of truth.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python sync.py                            # sync everything
-  python sync.py --tab technical_onboarding # sync one database tab
-  python sync.py --tab welcome              # sync the Welcome plain page
-  python sync.py --delete                   # wipe + re-sync all tabs
-  python sync.py --tab lab_intro --delete   # wipe + re-sync one tab
-  python sync.py --dry-run                  # preview without touching Notion
-  python sync.py --status                   # show local inventory
+  python sync.py                                     # sync everything
+  python sync.py --tab technical_onboarding          # sync one tab
+  python sync.py --tab welcome                       # sync a Feed page (Welcome)
+  python sync.py --category "Research Foundations"   # sync one category across all tabs
+  python sync.py --task understand_what_fmri_measures.md  # sync one task file
+  python sync.py --dry-run                           # preview without touching Notion
+  python sync.py --status                            # show local inventory
+
+  python pull_notion.py                              # pull Notion content to local files
+  python pull_notion.py --tab technical_onboarding   # pull one tab
         """,
     )
-    parser.add_argument(
-        "--tab",
-        metavar="TAB",
-        help="Only sync this folder (works for both database tabs and plain pages).",
-    )
-    parser.add_argument(
-        "--delete",
-        action="store_true",
-        help="Full wipe + re-sync. Required after editing body content.",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print what would happen without writing to Notion.",
-    )
-    parser.add_argument(
-        "--status",
-        action="store_true",
-        help="Show local inventory and exit.",
-    )
+    parser.add_argument("--tab", metavar="FOLDER",
+                        help="Sync one tab or Feed page by folder name.")
+    parser.add_argument("--task", metavar="FILE",
+                        help="Sync one task by filename (e.g. read_lab_handbook.md).")
+    parser.add_argument("--category", metavar="NAME",
+                        help="Sync all tasks in a category subfolder.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Preview without writing to Notion.")
+    parser.add_argument("--status", action="store_true",
+                        help="Show local inventory and exit.")
+    # --delete kept for power users but not advertised
+    parser.add_argument("--delete", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     if args.status:
         show_status()
         return
 
+    # --task
+    if args.task:
+        filepath = find_task_file(args.task)
+        if not filepath:
+            print(f"Task file '{args.task}' not found under content/.")
+            sys.exit(1)
+        sync_single_task(filepath, dry_run=args.dry_run)
+        return
+
+    # --category
+    if args.category:
+        sync_category(args.category, dry_run=args.dry_run)
+        return
+
     tabs = discover_tabs()
     pages = discover_pages()
     all_folders = {**tabs, **pages}
 
+    # --tab
     if args.tab:
         if args.tab not in all_folders:
             print(f"Unknown folder '{args.tab}'. Available: {', '.join(all_folders)}")
             sys.exit(1)
-        # Route to the right sync function
         if args.tab in pages:
-            sync_page(args.tab, pages[args.tab]["page_id"], pages[args.tab]["label"], dry_run=args.dry_run)
+            sync_page(args.tab, pages[args.tab]["page_id"], pages[args.tab]["label"],
+                      dry_run=args.dry_run)
         else:
             sync_tab(args.tab, tabs[args.tab]["data_source_id"], tabs[args.tab]["label"],
                      delete_first=args.delete, dry_run=args.dry_run)
-    else:
-        # Sync all plain pages first, then all database tabs
-        for folder_key, info in pages.items():
-            sync_page(folder_key, info["page_id"], info["label"], dry_run=args.dry_run)
-        for tab_key, info in tabs.items():
-            sync_tab(tab_key, info["data_source_id"], info["label"],
-                     delete_first=args.delete, dry_run=args.dry_run)
+        if not args.dry_run:
+            print("\nSync complete.")
+        return
+
+    # Default: sync everything
+    for folder_key, info in pages.items():
+        sync_page(folder_key, info["page_id"], info["label"], dry_run=args.dry_run)
+    for tab_key, info in tabs.items():
+        sync_tab(tab_key, info["data_source_id"], info["label"],
+                 delete_first=args.delete, dry_run=args.dry_run)
 
     if not args.dry_run:
         print("\nSync complete.")

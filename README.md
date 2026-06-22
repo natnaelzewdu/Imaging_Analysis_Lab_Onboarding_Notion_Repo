@@ -198,21 +198,10 @@ The **`.md` file is the source of truth**. Edit the file, run `sync.py`, and Not
 
 ### Edit an existing task
 
-**Body content changed** (the Markdown below the frontmatter):
+1. Edit the `.md` file (frontmatter and/or body).
+2. Run `python sync.py --task <filename.md>` to push only that task, or `python sync.py --tab <folder>` to push all tasks in the tab.
 
-Notion's API does not support in-place block updates - the page must be
-archived and recreated. Run:
-
-```bash
-python sync.py --tab <folder> --delete
-```
-
-**Frontmatter only changed** (task name, emoji, category, tier, order, url):
-
-Same as above - use `--delete` to wipe the old page and recreate it with the
-updated metadata.
-
-> **Tip:** `--delete` only affects the one tab you specify. Other tabs are untouched.
+Body content and metadata are updated in place — the task's Status in Notion is preserved.
 
 ### Delete a task
 
@@ -223,25 +212,17 @@ updated metadata.
 ### Move a task to a different category
 
 1. Move the `.md` file to `content/<tab>/<NewCategory>/` (create the folder if needed).
-2. Run `python sync.py --tab <folder> --delete` to re-publish with the new category.
+2. Run `python sync.py --task <filename.md>` or `python sync.py --tab <folder>`.
 
 ### Rename a task
 
 1. Update `task_name` in the frontmatter.
-2. Run `python sync.py --tab <folder> --delete` - the old-named page is archived
-   and the renamed page is created.
+2. Run `python sync.py --tab <folder>` - the old-named page is archived and the new one created.
 
 ### Rename a category subfolder
 
-The **subfolder name is the category** - `sync.py` derives the Notion
-`Category` property directly from the parent folder name, ignoring any
-`category:` key in the frontmatter.  Renaming a folder is all you need.
-
 1. Rename the subfolder (e.g. `Fellowships/` → `Grants and Fellowships/`).
-2. Run `python sync.py --tab <folder> --delete` - old pages archived, new ones
-   created with the updated category name.
-
-No file edits required.
+2. Run `python sync.py --tab <folder>` or `python sync.py --category "Grants and Fellowships"`.
 
 ### Rename a tab folder
 
@@ -343,28 +324,35 @@ are no named rows to reconcile against.
 
 ### Sync to Notion
 
+`sync.py` always pushes **local → Notion**. Local files are the source of truth.
+
 ```bash
-# Sync everything (plain pages + all database tabs)
+# Sync everything
 python sync.py
 
-# Sync one tab or page by folder name
+# Sync one tab
 python sync.py --tab technical_onboarding
+
+# Sync one task file
+python sync.py --task understand_what_fmri_measures.md
+
+# Sync all tasks in a category
+python sync.py --category "Research Foundations"
+
+# Sync a Feed page (Welcome or Lab Leadership)
 python sync.py --tab welcome
+python sync.py --tab lab_leadership
 
 # Preview without touching Notion
 python sync.py --dry-run
-
-# Full wipe + re-sync a database tab (required after editing body content)
-python sync.py --tab lab_intro --delete
 
 # Show local inventory
 python sync.py --status
 ```
 
-### Pull content from Notion
+### Pull content from Notion to local files
 
-If someone edited task body content directly in Notion and you want to sync
-those changes back to the local `.md` files:
+To go the other direction — pull edits made directly in Notion back to local `.md` files:
 
 ```bash
 python pull_notion.py                              # pull all tabs
@@ -411,8 +399,7 @@ Suggested agent workflow for a content change:
 1. Read the relevant `.md` file(s) in `content/<tab>/<category>/`.
 2. Modify frontmatter and/or body as needed.
 3. Run `python sync.py --dry-run` to verify the change looks correct.
-4. Run `python sync.py --tab <tab>` for adds/deletes (auto-reconciles).
-5. Run `python sync.py --tab <tab> --delete` if body content was edited.
+4. Run `python sync.py --task <filename.md>` for a single task, `--category <name>` for a category, or `--tab <tab>` for a full tab.
 
 ---
 
