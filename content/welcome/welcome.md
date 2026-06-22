@@ -21,4 +21,4 @@ The lab is led by **Armin Iraji, Ph.D.** and affiliated with the [TReNDS Center]
 - **Principal Investigator**: Armin Iraji, Ph.D.
 - **Center**: [TReNDS Center](https://trendscenter.org/)
 
-![Imaging-Analysis Lab group photo](https://studentgsu-my.sharepoint.com/:i:/g/personal/nalemayehu3_student_gsu_edu/IQBaYMo9UQ9jTbiY1NQwN7SKAc_Ep8cGn6TohY0XXbmcHpc?e=Cjhq94)
+![Imaging-Analysis Lab group photo](https://raw.githubusercontent.com/natnaelzewdu/images/main/allpeople_compressed.jpg)

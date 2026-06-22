@@ -84,8 +84,35 @@ def create_page(
     return resp.json()["id"]
 
 
+def update_page_properties(
+    page_id: str,
+    emoji: str = "📌",
+    url: str | None = None,
+    category: str | None = None,
+    tier: str | None = None,
+    order: int | None = None,
+) -> None:
+    """Patch the properties and icon of an existing task page."""
+    properties: dict = {}
+    if url is not None:
+        properties["URL"] = {"url": url} if url else {"url": None}
+    if category:
+        properties["Category"] = {"select": {"name": category}}
+    if tier:
+        properties["Tier"] = {"select": {"name": tier}}
+    if order is not None:
+        properties["Order"] = {"number": order}
+
+    payload: dict = {"icon": {"type": "emoji", "emoji": emoji}}
+    if properties:
+        payload["properties"] = properties
+
+    resp = _request("patch", f"pages/{page_id}", json=payload)
+    if resp.status_code != 200:
+        print(f"  Error updating page properties {page_id[:8]}: {resp.status_code} {resp.text[:200]}")
+
+
 def archive_page(page_id: str) -> bool:
-    """Archive (soft-delete) a page by moving it to trash."""
     resp = _request("patch", f"pages/{page_id}", json={"in_trash": True})
     if resp.status_code != 200:
         print(f"  Error archiving page {page_id[:8]}: {resp.status_code} {resp.text[:200]}")
@@ -361,9 +388,11 @@ def upload_image(image_blob: bytes, filename: str, content_type: str) -> str | N
 
 
 def ensure_database_properties(data_source_id: str) -> bool:
-    """Add Category, Tier, and Order properties to a data source if missing."""
+    """Add Category, Tier, and Order properties to a data source if missing.
+    Does NOT reset existing select options.
+    """
     props = {
-        "Category": {"select": {"options": []}},
+        "Category": {"select": {}},  # ensure type exists; never reset options
         "Tier": {"select": {"options": [
             {"name": "Theory", "color": "blue"},
             {"name": "Hands-On", "color": "green"},

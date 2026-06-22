@@ -24,4 +24,4 @@ A lab where people know each other beyond their research roles is a lab where co
 
 If you have an idea for a lab outing or want to organise something, bring it up at a lab meeting. Everyone is welcome to take the lead.
 
-![Lab social gathering](https://studentgsu-my.sharepoint.com/:i:/g/personal/nalemayehu3_student_gsu_edu/IQDkXW91eKebS4vfUYkScgRQAXnrmmn7ZvQk-z2FudxN0Ho?e=bl92AP)
+![Lab social gathering](https://raw.githubusercontent.com/natnaelzewdu/images/main/lab_photo.jpg)

@@ -51,6 +51,7 @@ from notion_api import (
     create_page,
     ensure_database_properties,
     query_data_source,
+    update_page_properties,
 )
 
 CONTENT_ROOT = os.path.join(os.path.dirname(__file__), "content")
@@ -349,6 +350,14 @@ def sync_tab(
             name = task["task_name"]
             page_id = existing[name]
             print(f"    ✏  {name}")
+            update_page_properties(
+                page_id,
+                emoji=task.get("emoji", "📌"),
+                url=task.get("url"),
+                category=task.get("category"),
+                tier=task.get("tier"),
+                order=task.get("order"),
+            )
             clear_page_blocks(page_id)
             if task.get("_body", "").strip():
                 append_body_content(page_id, task["_body"])
@@ -430,12 +439,19 @@ def sync_single_task(filepath: str, dry_run: bool = False) -> None:
         print(f"  [DRY RUN] Would update '{task_name}' in {tab_key}.")
         return
 
-    ensure_database_properties(data_source_id)
     existing = query_data_source(data_source_id)
 
     if task_name in existing:
         page_id = existing[task_name]
-        print(f"  Updating body content...")
+        print(f"  Updating properties and body content...")
+        update_page_properties(
+            page_id,
+            emoji=meta.get("emoji", "📌"),
+            url=meta.get("url"),
+            category=meta.get("category"),
+            tier=meta.get("tier"),
+            order=meta.get("order"),
+        )
         clear_page_blocks(page_id)
         if body.strip():
             append_body_content(page_id, body)

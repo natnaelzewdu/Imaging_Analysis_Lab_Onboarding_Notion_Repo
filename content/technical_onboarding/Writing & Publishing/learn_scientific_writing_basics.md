@@ -7,7 +7,7 @@ url: "https://www.youtube.com/watch?v=UY7sVKJPTMA"
 ---
 ## Why this matters to you
 
-Research is only as valuable as your ability to communicate it. You'll need to write conference abstracts, journal papers, grant applications, and internal reports throughout your time in the lab. Learning the structure and conventions of scientific writing early will make every paper you work on smoother and more efficient.
+Research is only as valuable as your ability to communicate it. You will need to write conference abstracts, journal papers, grant applications, and internal reports throughout your time in the lab. Learning the structure and conventions of scientific writing early will make every paper you work on smoother and more efficient.
 
 ## The structure of a scientific paper
 
